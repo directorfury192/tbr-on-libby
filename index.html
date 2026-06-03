@@ -436,16 +436,29 @@ a { color: inherit; }
 
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input type="text" id="lib-search" placeholder="e.g. DC Public Library, Brooklyn, Alameda County…" autocomplete="off">
+      <input type="text" id="lib-search" placeholder="Type city, library name, or ZIP code…" autocomplete="off">
     </div>
     <div class="lib-results" id="lib-results"></div>
     <div class="lib-selected" id="lib-selected">
       <span>✓</span>
       <div>
         <div id="lib-selected-name" style="font-weight:500;"></div>
-        <div id="lib-selected-loc" style="font-size:.75rem;margin-top:1px;"></div>
+        <div id="lib-selected-loc" style="font-size:.75rem;margin-top:1px;opacity:.8;"></div>
       </div>
       <button onclick="clearLibrary()">Change</button>
+    </div>
+    <div id="manual-entry-wrap" style="margin-top:.6rem;">
+      <details>
+        <summary style="font-size:.78rem;color:var(--muted);cursor:pointer;user-select:none;">Can't find your library? Enter key manually</summary>
+        <div style="margin-top:.5rem;display:flex;gap:8px;align-items:center;">
+          <input type="text" id="manual-key" placeholder="e.g. dclibrary" style="flex:1;font-size:.85rem;" autocomplete="off">
+          <input type="text" id="manual-name" placeholder="Library name (optional)" style="flex:2;font-size:.85rem;" autocomplete="off">
+          <button onclick="useManualKey()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--ink);color:var(--paper);font-size:.8rem;cursor:pointer;white-space:nowrap;">Use this key</button>
+        </div>
+        <p style="font-size:.75rem;color:var(--hint);margin-top:.4rem;">
+          Find your key in your Libby URL: libbyapp.com/library/<strong>yourkey</strong>
+        </p>
+      </details>
     </div>
 
     <div class="format-label" style="margin-top:1rem;">I'm interested in:</div>
@@ -498,22 +511,275 @@ let searchResults = [];
 let activeFilter  = 'all';
 let libSearchTimer = null;
 
-// ── OVERDRIVE LIBRARY DIRECTORY SEARCH ──
-// Uses OverDrive's public library-finder endpoint
-async function searchLibraries(query) {
-  if (query.length < 2) return [];
+// ── LIBRARY DATABASE (local, instant) ──
+const LIBRARY_DB = [name, key, city/state, country]
+const LIBRARY_DB = [
+  // United States — major systems
+  ["DC Public Library","dclibrary","Washington, DC","US"],
+  ["New York Public Library","nypl","New York, NY","US"],
+  ["Brooklyn Public Library","bklynlibrary","Brooklyn, NY","US"],
+  ["Queens Public Library","queenslibrary","Queens, NY","US"],
+  ["Los Angeles Public Library","lapl","Los Angeles, CA","US"],
+  ["Chicago Public Library","chipublib","Chicago, IL","US"],
+  ["Houston Public Library","houstonlibrary","Houston, TX","US"],
+  ["Philadelphia Free Library","freelibrary","Philadelphia, PA","US"],
+  ["San Francisco Public Library","sfpl","San Francisco, CA","US"],
+  ["Seattle Public Library","spl","Seattle, WA","US"],
+  ["Boston Public Library","bpl","Boston, MA","US"],
+  ["Denver Public Library","denverlibrary","Denver, CO","US"],
+  ["Miami-Dade Public Library","mdpls","Miami, FL","US"],
+  ["Dallas Public Library","dallaslibrary","Dallas, TX","US"],
+  ["Phoenix Public Library","phoenixpubliclibrary","Phoenix, AZ","US"],
+  ["San Diego Public Library","sdpl","San Diego, CA","US"],
+  ["Detroit Public Library","detroit","Detroit, MI","US"],
+  ["Baltimore City Public Library","bcpl","Baltimore, MD","US"],
+  ["Portland Public Library","pplme","Portland, ME","US"],
+  ["Multnomah County Library","multcolib","Portland, OR","US"],
+  ["King County Library System","kcls","King County, WA","US"],
+  ["Hennepin County Library","hclib","Minneapolis, MN","US"],
+  ["Minneapolis Public Library","hclib","Minneapolis, MN","US"],
+  ["Cleveland Public Library","cpl","Cleveland, OH","US"],
+  ["Columbus Metropolitan Library","columbuslibrary","Columbus, OH","US"],
+  ["Cincinnati Public Library","cincinnatilibrary","Cincinnati, OH","US"],
+  ["Indianapolis Public Library","imcpl","Indianapolis, IN","US"],
+  ["Nashville Public Library","nashville","Nashville, TN","US"],
+  ["Memphis Public Libraries","memphislibrary","Memphis, TN","US"],
+  ["Atlanta-Fulton Public Library","afpls","Atlanta, GA","US"],
+  ["Charlotte Mecklenburg Library","cmlibrary","Charlotte, NC","US"],
+  ["Raleigh Public Library","raleighlibrary","Raleigh, NC","US"],
+  ["Durham County Library","durhamcountylibrary","Durham, NC","US"],
+  ["Wake County Public Libraries","wakegov","Raleigh, NC","US"],
+  ["Louisville Free Public Library","lfpl","Louisville, KY","US"],
+  ["Kansas City Public Library","kclibrary","Kansas City, MO","US"],
+  ["St. Louis Public Library","slpl","St. Louis, MO","US"],
+  ["Las Vegas–Clark County Library","lvccld","Las Vegas, NV","US"],
+  ["Salt Lake City Public Library","slcpl","Salt Lake City, UT","US"],
+  ["Salt Lake County Library","slcolibrary","Salt Lake County, UT","US"],
+  ["Albuquerque Bernalillo County Library","abclibrary","Albuquerque, NM","US"],
+  ["Tucson Pima Public Library","pimalibrary","Tucson, AZ","US"],
+  ["Sacramento Public Library","saclibrary","Sacramento, CA","US"],
+  ["Alameda County Library","alamedacountylibrary","Alameda County, CA","US"],
+  ["San Jose Public Library","sjpl","San Jose, CA","US"],
+  ["Santa Clara County Library","sccl","Santa Clara County, CA","US"],
+  ["Oakland Public Library","oaklandlibrary","Oakland, CA","US"],
+  ["Berkeley Public Library","berkeleylibrary","Berkeley, CA","US"],
+  ["Contra Costa County Library","ccclib","Contra Costa, CA","US"],
+  ["Marin County Free Library","marinlibrary","Marin County, CA","US"],
+  ["San Mateo County Libraries","smcl","San Mateo County, CA","US"],
+  ["Sonoma County Library","sonomalibrary","Sonoma County, CA","US"],
+  ["Fresno County Public Library","fresnolibrary","Fresno, CA","US"],
+  ["Orange County Public Libraries","ocpl","Orange County, CA","US"],
+  ["Long Beach Public Library","lbpl","Long Beach, CA","US"],
+  ["Pasadena Public Library","pasadenapubliclibrary","Pasadena, CA","US"],
+  ["Riverside County Library","rivlib","Riverside County, CA","US"],
+  ["San Bernardino County Library","sbclib","San Bernardino, CA","US"],
+  ["Ventura County Library","vencolibrary","Ventura County, CA","US"],
+  ["Santa Barbara Public Library","sbplibrary","Santa Barbara, CA","US"],
+  ["Monterey County Free Libraries","montereylibrary","Monterey County, CA","US"],
+  ["San Luis Obispo County Library","slolibrary","San Luis Obispo, CA","US"],
+  ["Kern County Library","kerncountylibrary","Kern County, CA","US"],
+  ["Hawaii State Public Library","librarieshawaii","Hawaii","US"],
+  ["Anchorage Public Library","anchoragelibrary","Anchorage, AK","US"],
+  ["Fairbanks North Star Library","fnsb","Fairbanks, AK","US"],
+  ["Portland Public Library (OR)","multcolib","Portland, OR","US"],
+  ["Lane County Library","lanelibraries","Lane County, OR","US"],
+  ["Washington County Cooperative Library","wccls","Washington County, OR","US"],
+  ["Spokane Public Library","spokanelibrary","Spokane, WA","US"],
+  ["Pierce County Library","piercecountylibrary","Pierce County, WA","US"],
+  ["Tacoma Public Library","tacomalibrary","Tacoma, WA","US"],
+  ["Snohomish County Library","snolib","Snohomish County, WA","US"],
+  ["Bellingham Public Library","bellinghamlibrary","Bellingham, WA","US"],
+  ["Boise Public Library","boisepl","Boise, ID","US"],
+  ["Missoula Public Library","missoulapubliclibrary","Missoula, MT","US"],
+  ["Billings Public Library","billingslibrary","Billings, MT","US"],
+  ["Cheyenne Public Library","cheyennelibrary","Cheyenne, WY","US"],
+  ["Omaha Public Library","omaha","Omaha, NE","US"],
+  ["Lincoln City Libraries","lincolnlibraries","Lincoln, NE","US"],
+  ["Sioux Falls Public Library","siouxfallslibrary","Sioux Falls, SD","US"],
+  ["Bismarck Veterans Memorial Library","bismarck","Bismarck, ND","US"],
+  ["Fargo Public Library","fargolibrary","Fargo, ND","US"],
+  ["Madison Public Library","madisonlibrary","Madison, WI","US"],
+  ["Milwaukee Public Library","mpl","Milwaukee, WI","US"],
+  ["Chicago area library consortium","chipublib","Chicago area, IL","US"],
+  ["Springfield Public Library","springfieldlibrary","Springfield, IL","US"],
+  ["Des Moines Public Library","desmoineslibrary","Des Moines, IA","US"],
+  ["Iowa City Public Library","icpl","Iowa City, IA","US"],
+  ["Davenport Public Library","davenportlibrary","Davenport, IA","US"],
+  ["St. Paul Public Library","sppl","St. Paul, MN","US"],
+  ["Rochester Public Library","rochesterlibrary","Rochester, MN","US"],
+  ["Duluth Public Library","duluthlibrary","Duluth, MN","US"],
+  ["Detroit Lakes Library","detroitlakeslibrary","Detroit Lakes, MN","US"],
+  ["Grand Rapids Public Library","grpl","Grand Rapids, MI","US"],
+  ["Ann Arbor District Library","aadl","Ann Arbor, MI","US"],
+  ["Lansing Public Library","lansinglibrary","Lansing, MI","US"],
+  ["Flint Public Library","flintlibrary","Flint, MI","US"],
+  ["Toledo-Lucas County Public Library","toledolibrary","Toledo, OH","US"],
+  ["Akron-Summit County Library","akronlibrary","Akron, OH","US"],
+  ["Dayton Metro Library","daytonmetrolibrary","Dayton, OH","US"],
+  ["Toledo Public Library","toledolibrary","Toledo, OH","US"],
+  ["Pittsburgh Carnegie Library","clpgh","Pittsburgh, PA","US"],
+  ["Allegheny County Library","aclalibraries","Allegheny County, PA","US"],
+  ["Allentown Public Library","allentownlibrary","Allentown, PA","US"],
+  ["Erie County Public Library","eriepubliclibrary","Erie, PA","US"],
+  ["Scranton Public Library","scrantonlibrary","Scranton, PA","US"],
+  ["Enoch Pratt Free Library","prattlibrary","Baltimore, MD","US"],
+  ["Montgomery County Libraries","montgomerycountymd","Montgomery County, MD","US"],
+  ["Prince George's County Library","pgcmls","Prince George's County, MD","US"],
+  ["Arlington Public Library","arlingtonva","Arlington, VA","US"],
+  ["Fairfax County Library","fairfaxcounty","Fairfax County, VA","US"],
+  ["Alexandria Library","alexlibraryva","Alexandria, VA","US"],
+  ["Richmond Public Library","richmondpubliclibrary","Richmond, VA","US"],
+  ["Norfolk Public Library","norfolklibrary","Norfolk, VA","US"],
+  ["Virginia Beach Public Library","vbpl","Virginia Beach, VA","US"],
+  ["Charlottesville Free Library","cvillelibrary","Charlottesville, VA","US"],
+  ["Roanoke Public Library","roanokelibrary","Roanoke, VA","US"],
+  ["Winston-Salem Forsyth Library","wsfl","Winston-Salem, NC","US"],
+  ["Greensboro Public Library","greensborolibrary","Greensboro, NC","US"],
+  ["Buncombe County Library","buncombecountylibrary","Asheville, NC","US"],
+  ["Greenville County Library","gcls","Greenville, SC","US"],
+  ["Charleston County Library","charlestonlibrary","Charleston, SC","US"],
+  ["Columbia (SC) Public Library","columbialibrary","Columbia, SC","US"],
+  ["Savannah-Chatham Library","sccpls","Savannah, GA","US"],
+  ["Augusta-Richmond County Library","arcpls","Augusta, GA","US"],
+  ["Gwinnett County Library","gwinnettpl","Gwinnett County, GA","US"],
+  ["Cobb County Public Library","cobbcat","Cobb County, GA","US"],
+  ["DeKalb County Library","dekalblibrary","DeKalb County, GA","US"],
+  ["Jacksonville Public Library","jaxpubliclibrary","Jacksonville, FL","US"],
+  ["Tampa-Hillsborough County Library","hcplc","Tampa, FL","US"],
+  ["Orange County Library","ocls","Orlando, FL","US"],
+  ["Broward County Library","broward","Broward County, FL","US"],
+  ["Palm Beach County Library","pbclibrary","Palm Beach County, FL","US"],
+  ["Pinellas Public Library","pplc","Pinellas County, FL","US"],
+  ["Sarasota County Libraries","sclibs","Sarasota County, FL","US"],
+  ["Lee County Library","leecountylibrary","Lee County, FL","US"],
+  ["Brevard County Library","brevardcountylibrary","Brevard County, FL","US"],
+  ["Volusia County Library","volusiacountylibrary","Volusia County, FL","US"],
+  ["Collier County Library","collierlibrary","Collier County, FL","US"],
+  ["Gainesville Regional Library","aclib","Gainesville, FL","US"],
+  ["New Orleans Public Library","nopl","New Orleans, LA","US"],
+  ["Baton Rouge Parish Library","ebrpl","Baton Rouge, LA","US"],
+  ["Shreveport Public Library","caddo","Shreveport, LA","US"],
+  ["Little Rock Public Library","cals","Little Rock, AR","US"],
+  ["Oklahoma City Libraries","metropolitanlibrarysystem","Oklahoma City, OK","US"],
+  ["Tulsa City-County Library","tulsalibrary","Tulsa, OK","US"],
+  ["Austin Public Library","austinlibrary","Austin, TX","US"],
+  ["San Antonio Public Library","mysapl","San Antonio, TX","US"],
+  ["Fort Worth Public Library","fwpl","Fort Worth, TX","US"],
+  ["El Paso Public Library","elpasopubliclibrary","El Paso, TX","US"],
+  ["Plano Public Library","planolibrary","Plano, TX","US"],
+  ["Arlington (TX) Public Library","arlingtonlibrary","Arlington, TX","US"],
+  ["Corpus Christi Public Library","corpuschristilibrary","Corpus Christi, TX","US"],
+  ["Lubbock Public Library","lubbocklibrary","Lubbock, TX","US"],
+  ["Amarillo Public Library","amarillolibrary","Amarillo, TX","US"],
+  ["Laredo Public Library","laredolibrary","Laredo, TX","US"],
+  ["Harris County Public Library","hcpl","Harris County, TX","US"],
+  // Canada
+  ["Toronto Public Library","torontopubliclibrary","Toronto, ON","CA"],
+  ["Vancouver Public Library","vpl","Vancouver, BC","CA"],
+  ["Ottawa Public Library","biblioottawalibrary","Ottawa, ON","CA"],
+  ["Calgary Public Library","calgarypl","Calgary, AB","CA"],
+  ["Edmonton Public Library","epl","Edmonton, AB","CA"],
+  ["Winnipeg Public Library","wpl","Winnipeg, MB","CA"],
+  ["Hamilton Public Library","hpl","Hamilton, ON","CA"],
+  ["Kitchener Public Library","kpl","Kitchener, ON","CA"],
+  ["London Public Library","londonpl","London, ON","CA"],
+  ["Mississauga Library System","mississaugalibrary","Mississauga, ON","CA"],
+  ["Brampton Library","bramptonlibrary","Brampton, ON","CA"],
+  ["Markham Public Library","markhamlibrary","Markham, ON","CA"],
+  ["Richmond Hill Public Library","rhpl","Richmond Hill, ON","CA"],
+  ["Oakville Public Library","opl","Oakville, ON","CA"],
+  ["Burlington Public Library","burl","Burlington, ON","CA"],
+  ["Windsor Public Library","windsorpubliclibrary","Windsor, ON","CA"],
+  ["Saskatoon Public Library","saskatoonlibrary","Saskatoon, SK","CA"],
+  ["Regina Public Library","reginalibrary","Regina, SK","CA"],
+  ["Halifax Public Libraries","halifaxpubliclibraries","Halifax, NS","CA"],
+  ["Moncton Public Library","moncton","Moncton, NB","CA"],
+  ["Victoria Public Library","victorialibrary","Victoria, BC","CA"],
+  ["Surrey Libraries","surreylibrary","Surrey, BC","CA"],
+  ["Burnaby Public Library","burnabypl","Burnaby, BC","CA"],
+  ["Richmond Public Library","richmond","Richmond, BC","CA"],
+  ["Coquitlam Public Library","coqlibrary","Coquitlam, BC","CA"],
+  // United Kingdom
+  ["British Library","bl","London","UK"],
+  ["Westminster Libraries","westminster","London","UK"],
+  ["Lambeth Libraries","lambeth","London","UK"],
+  ["Tower Hamlets Libraries","towerhamlets","London","UK"],
+  ["Southwark Libraries","southwark","London","UK"],
+  ["Lewisham Libraries","lewisham","London","UK"],
+  ["Hackney Libraries","hackney","London","UK"],
+  ["Islington Libraries","islington","London","UK"],
+  ["Camden Libraries","camden","London","UK"],
+  ["Hammersmith & Fulham Libraries","hf","London","UK"],
+  ["Ealing Libraries","ealing","London","UK"],
+  ["Hounslow Libraries","hounslow","London","UK"],
+  ["Richmond upon Thames Libraries","richmond","London","UK"],
+  ["Kingston Libraries","kingston","London","UK"],
+  ["Merton Libraries","merton","London","UK"],
+  ["Sutton Libraries","sutton","London","UK"],
+  ["Croydon Libraries","croydon","London","UK"],
+  ["Bromley Libraries","bromley","London","UK"],
+  ["Manchester Libraries","manchester","Manchester","UK"],
+  ["Birmingham Libraries","birmingham","Birmingham","UK"],
+  ["Leeds Libraries","leeds","Leeds","UK"],
+  ["Sheffield Libraries","sheffield","Sheffield","UK"],
+  ["Bristol Libraries","bristol","Bristol","UK"],
+  ["Liverpool Libraries","liverpool","Liverpool","UK"],
+  ["Edinburgh Libraries","edinburghlibrary","Edinburgh","UK"],
+  ["Glasgow Libraries","glasgowlibrary","Glasgow","UK"],
+  // Australia
+  ["State Library NSW","slnsw","Sydney, NSW","AU"],
+  ["Sydney City Library","sydneylibrary","Sydney, NSW","AU"],
+  ["Melbourne City Library","cityofmelbourne","Melbourne, VIC","AU"],
+  ["Brisbane City Libraries","brisbanelibraries","Brisbane, QLD","AU"],
+  ["Adelaide City Libraries","adelaidecitylibraries","Adelaide, SA","AU"],
+  ["Perth City Libraries","perthcitylibraries","Perth, WA","AU"],
+  // New Zealand
+  ["Auckland Libraries","aucklandlibraries","Auckland","NZ"],
+  ["Wellington City Libraries","wcl","Wellington","NZ"],
+];
+
+// ── LIBRARY SEARCH: local fuzzy + Thunder API fallback ──
+function searchLibrariesLocal(query) {
+  const q = query.toLowerCase().trim();
+  if (q.length < 2) return [];
+  const terms = q.split(/\s+/);
+  const scored = LIBRARY_DB.map(([name, key, location, country]) => {
+    const haystack = (name + ' ' + key + ' ' + location).toLowerCase();
+    // Score: every term must appear somewhere
+    if (!terms.every(t => haystack.includes(t))) return null;
+    // Boost exact name start match
+    const score = name.toLowerCase().startsWith(q) ? 10
+                : name.toLowerCase().includes(q)   ?  5 : 1;
+    return { name, key, location, country, score };
+  }).filter(Boolean);
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 8);
+}
+
+async function searchLibrariesAPI(query) {
   const url = `https://thunder.api.overdrive.com/v2/libraries?query=${encodeURIComponent(query)}&perPage=8&page=1`;
   try {
-    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const r = await fetch(url, { headers: { Accept: 'application/json' } });
     if (!r.ok) return [];
     const data = await r.json();
     return (data.items || []).map(lib => ({
       name:     lib.name || lib.preferredKey,
       key:      lib.preferredKey || lib.websiteId,
       location: [lib.city, lib.stateOrProvince, lib.country].filter(Boolean).join(', '),
-      type:     lib.type || ''
+      country:  lib.country || '',
+      score:    0
     }));
   } catch { return []; }
+}
+
+async function searchLibraries(query) {
+  // Local results are instant; merge with API results deduped by key
+  const local = searchLibrariesLocal(query);
+  const localKeys = new Set(local.map(l => l.key));
+  let api = [];
+  try { api = await searchLibrariesAPI(query); } catch {}
+  const deduped = api.filter(a => !localKeys.has(a.key));
+  return [...local, ...deduped].slice(0, 10);
 }
 
 // ── LIBRARY SEARCH UI ──
@@ -889,6 +1155,19 @@ function applyFilters() {
   document.getElementById('empty-msg').style.display = vis === 0 ? 'block' : 'none';
 }
 
+// ── MANUAL KEY ENTRY ──
+function useManualKey() {
+  const key  = document.getElementById('manual-key').value.trim().toLowerCase().replace(/\s+/g,'');
+  const name = document.getElementById('manual-name').value.trim() || key;
+  if (!key) { alert('Please enter a library key.'); return; }
+  selectLibrary({ name, key, location: 'Entered manually', country: '' });
+  document.getElementById('manual-key').value  = '';
+  document.getElementById('manual-name').value = '';
+  // close details
+  const det = document.querySelector('#manual-entry-wrap details');
+  if (det) det.open = false;
+}
+
 // ── RESET ──
 function resetAll() {
   parsedBooks  = { needsLibrary: [], alreadyOwned: [] };
@@ -900,6 +1179,10 @@ function resetAll() {
   document.getElementById('csv-file').value = '';
   document.getElementById('lib-selected').classList.remove('show');
   document.getElementById('lib-search').value = '';
+  const mk = document.getElementById('manual-key');
+  const mn = document.getElementById('manual-name');
+  if (mk) mk.value = '';
+  if (mn) mn.value = '';
   document.getElementById('panel-library').style.opacity = '.45';
   document.getElementById('panel-library').style.pointerEvents = 'none';
   document.getElementById('run-btn').style.display = '';
