@@ -119,7 +119,6 @@ a { color: inherit; }
 
 /* ── upload zone ── */
 .upload-zone {
-  display: block;
   border: 2px dashed var(--border);
   border-radius: var(--radius);
   padding: 2rem 1.5rem;
@@ -128,7 +127,15 @@ a { color: inherit; }
   transition: border-color .2s, background .2s;
   background: var(--paper);
   position: relative;
-  user-select: none;
+}
+.upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
 }
 .upload-zone:hover, .upload-zone.drag-over {
   border-color: var(--ink); background: #f5f0e8;
@@ -414,12 +421,12 @@ a { color: inherit; }
         <li>Upload that file below ↓</li>
       </ol>
     </div>
-    <label for="csv-file" class="upload-zone" id="drop-zone">
-      <input type="file" id="csv-file" accept=".csv" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">
+    <div class="upload-zone" id="drop-zone">
+      <input type="file" id="csv-file" accept=".csv">
       <div class="upload-icon">📄</div>
       <div class="upload-title">Click to upload your StoryGraph CSV</div>
       <div class="upload-hint">or drag and drop it here — your file never leaves your browser</div>
-    </label>
+    </div>
     <div class="upload-success" id="upload-success">
       <span>✓</span>
       <span id="upload-msg"></span>
@@ -854,35 +861,25 @@ document.querySelectorAll('.format-chip').forEach(chip => {
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('csv-file');
 
-// File picker: label[for] handles click natively — only need the change event
-fileInput.addEventListener('change', function() {
-  if (this.files && this.files[0]) {
-    handleFile(this.files[0]);
-  }
+// Change fires when user picks a file via the click-to-browse input
+fileInput.addEventListener('change', function(e) {
+  const f = e.target.files[0];
+  if (f) handleFile(f);
 });
 
-// Drag-and-drop on the label
-['dragenter','dragover'].forEach(evt => {
-  dropZone.addEventListener(evt, function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.add('drag-over');
-  });
+// Drag events: attach to the zone div (the input forwards drag events up to it)
+dropZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
 });
 dropZone.addEventListener('dragleave', function(e) {
-  e.preventDefault();
-  e.stopPropagation();
-  // only remove highlight when leaving the zone entirely
-  if (!dropZone.contains(e.relatedTarget)) {
-    dropZone.classList.remove('drag-over');
-  }
+  if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('drag-over');
 });
 dropZone.addEventListener('drop', function(e) {
   e.preventDefault();
-  e.stopPropagation();
   dropZone.classList.remove('drag-over');
-  const files = e.dataTransfer.files;
-  if (files && files[0]) handleFile(files[0]);
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
 });
 
 function handleFile(file) {
