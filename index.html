@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TBR on Libby — Check your StoryGraph list at your library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+/* ── reset & tokens ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ink:    #18120e;
+  --paper:  #faf7f2;
+  --card:   #ffffff;
+  --border: #e6e0d6;
+  --muted:  #7a6e64;
+  --hint:   #b0a496;
+  --green:  #2a6840; --green-bg: #e6f4eb;
+  --amber:  #7a5000; --amber-bg: #fef4e2;
+  --slate:  #505868; --slate-bg: #eef0f4;
+  --teal:   #0d6b58; --teal-bg:  #e2f4ef;
+  --red:    #8b2020; --red-bg:   #fceaea;
+  --blue:   #1a4f99; --blue-bg:  #e8f0fc;
+  --accent: #c0392b;
+  --serif:  'Lora', Georgia, serif;
+  --sans:   'DM Sans', system-ui, sans-serif;
+  --radius: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,.07);
+}
+
+html { scroll-behavior: smooth; }
+body { font-family: var(--sans); background: var(--paper); color: var(--ink); min-height: 100vh; }
+
+/* ── typography ── */
+h1, h2, h3 { font-family: var(--serif); }
+a { color: inherit; }
+
+/* ── layout ── */
+.container { max-width: 780px; margin: 0 auto; padding: 0 1.5rem; }
+
+/* ── header ── */
+.site-header {
+  background: var(--ink);
+  padding: 2rem 0 1.5rem;
+  color: var(--paper);
+}
+.site-header .container { display: flex; align-items: center; gap: 1rem; }
+.logo-mark {
+  width: 44px; height: 44px; background: var(--accent);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 1.3rem; color: #fff; flex-shrink: 0;
+}
+.site-title { font-size: 1.6rem; font-weight: 600; letter-spacing: -.02em; }
+.site-title span { color: #c9b49a; font-style: italic; }
+.site-tagline { font-size: .85rem; color: #9a8c80; margin-top: 2px; }
+
+/* ── progress steps ── */
+.steps-bar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: .85rem 0;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: var(--shadow);
+}
+.steps-inner {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; max-width: 560px; margin: 0 auto; padding: 0 1.5rem;
+}
+.step-item {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .78rem; color: var(--hint); font-weight: 400;
+  white-space: nowrap;
+}
+.step-item.active { color: var(--ink); font-weight: 500; }
+.step-item.done { color: var(--green); }
+.step-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 500; flex-shrink: 0;
+}
+.step-item.done .step-num { background: var(--green); border-color: var(--green); color: #fff; }
+.step-item.active .step-num { background: var(--ink); border-color: var(--ink); color: #fff; }
+.step-connector { flex: 1; height: 1px; background: var(--border); min-width: 20px; max-width: 60px; }
+
+/* ── main content area ── */
+.main-content { padding: 2.5rem 0 5rem; }
+
+/* ── cards / panels ── */
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  margin-bottom: 1.25rem;
+}
+.panel-title {
+  font-size: 1rem; font-weight: 600; margin-bottom: .35rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-title .step-badge {
+  width: 24px; height: 24px; background: var(--ink); color: var(--paper);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-family: var(--sans); font-size: .72rem; font-weight: 500; flex-shrink: 0;
+}
+.panel-desc { font-size: .85rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.25rem; }
+
+/* ── callout box ── */
+.callout {
+  background: var(--slate-bg); border-left: 3px solid var(--slate);
+  border-radius: 0 6px 6px 0; padding: .75rem 1rem;
+  font-size: .82rem; color: var(--slate); line-height: 1.6; margin-bottom: 1.25rem;
+}
+.callout strong { color: var(--ink); }
+.callout ol, .callout ul { padding-left: 1.2rem; margin-top: .4rem; }
+.callout li { margin-bottom: .2rem; }
+.callout a { color: var(--blue); text-decoration: underline; }
+
+/* ── upload zone ── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: var(--paper);
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--ink); background: #f5f0e8;
+}
+.upload-zone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.upload-icon { font-size: 2rem; margin-bottom: .6rem; }
+.upload-title { font-size: .95rem; font-weight: 500; margin-bottom: .3rem; }
+.upload-hint { font-size: .78rem; color: var(--muted); }
+.upload-success {
+  display: none; align-items: center; gap: 10px;
+  background: var(--green-bg); border: 1px solid #b6d9c2;
+  border-radius: 8px; padding: .75rem 1rem; margin-top: .85rem;
+  font-size: .85rem; color: var(--green);
+}
+.upload-success.show { display: flex; }
+
+/* ── library search ── */
+.search-wrap { position: relative; margin-bottom: .6rem; }
+.search-wrap input {
+  width: 100%; padding: .65rem 1rem .65rem 2.5rem;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  font-family: var(--sans); font-size: .9rem; background: var(--paper);
+  outline: none; transition: border-color .15s;
+}
+.search-wrap input:focus { border-color: var(--ink); }
+.search-icon {
+  position: absolute; left: .75rem; top: 50%; transform: translateY(-50%);
+  color: var(--hint); pointer-events: none; font-size: 1rem;
+}
+.lib-results {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--card); max-height: 240px; overflow-y: auto;
+  display: none; box-shadow: var(--shadow);
+}
+.lib-results.show { display: block; }
+.lib-result-item {
+  padding: .7rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border);
+  transition: background .12s; display: flex; align-items: center; justify-content: space-between;
+}
+.lib-result-item:last-child { border-bottom: none; }
+.lib-result-item:hover { background: var(--paper); }
+.lib-name { font-size: .88rem; font-weight: 500; }
+.lib-location { font-size: .75rem; color: var(--muted); margin-top: 1px; }
+.lib-tag { font-size: .7rem; background: var(--slate-bg); color: var(--slate); padding: 2px 8px; border-radius: 12px; }
+.lib-selected {
+  display: none; align-items: center; gap: 10px;
+  background: var(--teal-bg); border: 1px solid #9ed4c6;
+  border-radius: 8px; padding: .75rem 1rem; margin-top: .6rem;
+  font-size: .85rem; color: var(--teal);
+}
+.lib-selected.show { display: flex; }
+.lib-selected button {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  font-size: .75rem; color: var(--teal); text-decoration: underline; padding: 0;
+}
+
+/* ── format chips ── */
+.format-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: .85rem; }
+.format-chip {
+  padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--paper); cursor: pointer; font-family: var(--sans);
+  font-size: .8rem; color: var(--muted); transition: all .15s; user-select: none;
+}
+.format-chip.selected {
+  background: var(--ink); color: var(--paper); border-color: var(--ink);
+}
+.format-label { font-size: .78rem; color: var(--muted); margin-bottom: .5rem; }
+
+/* ── run button ── */
+.run-btn {
+  width: 100%; padding: .9rem; border-radius: 8px;
+  background: var(--ink); color: var(--paper); border: none;
+  font-family: var(--sans); font-size: 1rem; font-weight: 500;
+  cursor: pointer; transition: opacity .15s, transform .1s;
+  margin-top: 1.25rem;
+}
+.run-btn:hover:not(:disabled) { opacity: .88; }
+.run-btn:active:not(:disabled) { transform: scale(.99); }
+.run-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── progress ── */
+.progress-wrap { display: none; margin-top: 1rem; }
+.progress-wrap.show { display: block; }
+.progress-bar-outer {
+  height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: .6rem;
+}
+.progress-bar-inner {
+  height: 100%; background: var(--ink); border-radius: 3px;
+  transition: width .4s ease; width: 0%;
+}
+.progress-label { font-size: .8rem; color: var(--muted); }
+
+/* ── results ── */
+#results-section { display: none; }
+#results-section.show { display: block; }
+
+.stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px; margin-bottom: 1.5rem;
+}
+.stat-card {
+  border-radius: 8px; padding: .9rem 1rem; text-align: center;
+}
+.stat-card .num { font-size: 1.8rem; font-weight: 500; line-height: 1; }
+.stat-card .lbl { font-size: .72rem; margin-top: 4px; opacity: .8; }
+.stat-card.avail  { background: var(--green-bg);  color: var(--green); }
+.stat-card.hold   { background: var(--amber-bg);  color: var(--amber); }
+.stat-card.miss   { background: var(--slate-bg);  color: var(--slate); }
+.stat-card.owned  { background: var(--teal-bg);   color: var(--teal);  }
+
+.filter-row {
+  display: flex; gap: 7px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 1rem;
+}
+.filter-btn {
+  padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--paper); cursor: pointer; font-family: var(--sans);
+  font-size: .78rem; color: var(--muted); transition: all .15s;
+}
+.filter-btn:hover { border-color: var(--ink); color: var(--ink); }
+.filter-btn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.filter-btn .ct { opacity: .65; margin-left: 3px; }
+#book-search {
+  margin-left: auto; padding: 5px 13px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--paper);
+  font-family: var(--sans); font-size: .8rem; outline: none; width: 180px;
+}
+#book-search:focus { border-color: var(--ink); }
+
+/* ── book cards ── */
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.book-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px;
+  display: flex; gap: 11px; align-items: flex-start;
+  transition: box-shadow .15s, transform .15s;
+  animation: fadeUp .25s ease both;
+}
+.book-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.book-card.hidden { display: none; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+.spine {
+  width: 38px; height: 54px; border-radius: 3px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 10px; font-weight: 600;
+  letter-spacing: .02em; text-align: center; line-height: 1.2; overflow: hidden;
+}
+.spine img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
+
+.bk-info { flex: 1; min-width: 0; }
+.bk-title { font-family: var(--serif); font-size: .9rem; font-weight: 600; line-height: 1.35; margin-bottom: 2px; }
+.bk-author { font-size: .74rem; color: var(--muted); margin-bottom: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+.tag {
+  font-size: .68rem; padding: 2px 8px; border-radius: 10px;
+  display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+}
+.t-avail  { background: var(--green-bg); color: var(--green); font-weight: 500; }
+.t-hold   { background: var(--amber-bg); color: var(--amber); }
+.t-miss   { background: var(--slate-bg); color: var(--slate); }
+.t-owned  { background: var(--teal-bg);  color: var(--teal);  font-weight: 500; }
+.t-fmt    { background: var(--blue-bg);  color: var(--blue); }
+
+.bk-action { margin-top: 7px; }
+.btn-borrow, .btn-hold, .btn-wc {
+  display: inline-block; padding: 4px 12px; border-radius: 6px;
+  text-decoration: none; font-size: .74rem; font-weight: 500;
+  transition: opacity .15s; cursor: pointer;
+}
+.btn-borrow { background: var(--green); color: #fff; }
+.btn-hold   { background: var(--amber); color: #fff; }
+.btn-wc     { background: var(--slate-bg); color: var(--slate); border: 1px solid var(--border); }
+.btn-borrow:hover, .btn-hold:hover { opacity: .82; }
+.hold-detail { font-size: .7rem; color: var(--muted); margin-top: 3px; }
+
+.empty-msg { text-align: center; padding: 3rem 1rem; color: var(--hint); font-size: .9rem; }
+
+/* ── footer ── */
+.site-footer {
+  background: var(--ink); color: #7a6e64;
+  text-align: center; padding: 1.5rem;
+  font-size: .75rem; line-height: 1.8;
+}
+.site-footer a { color: #9a8c80; }
+
+/* ── loading spinner ── */
+.spinner {
+  width: 16px; height: 16px; border: 2px solid var(--border);
+  border-top-color: var(--ink); border-radius: 50%;
+  animation: spin .7s linear infinite; display: inline-block; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── how-it-works section ── */
+.how-section { margin: 2.5rem 0; }
+.how-section h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+.how-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.how-step {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1rem;
+}
+.how-step .n { font-size: 1.4rem; font-family: var(--serif); color: var(--hint); margin-bottom: .4rem; }
+.how-step .t { font-size: .85rem; font-weight: 500; margin-bottom: .25rem; }
+.how-step .d { font-size: .78rem; color: var(--muted); line-height: 1.5; }
+
+@media (max-width: 560px) {
+  .book-grid { grid-template-columns: 1fr; }
+  .site-title { font-size: 1.3rem; }
+  #book-search { width: 130px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="container">
+    <div class="logo-mark">📚</div>
+    <div>
+      <h1 class="site-title">TBR <span>on Libby</span></h1>
+      <p class="site-tagline">Check your StoryGraph to-read list against your library's digital catalog</p>
+    </div>
+  </div>
+</header>
+
+<!-- STEPS BAR -->
+<nav class="steps-bar" aria-label="Progress">
+  <div class="steps-inner">
+    <div class="step-item active" id="step1-indicator">
+      <div class="step-num">1</div><span>Export CSV</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="step2-indicator">
+      <div class="step-num">2</div><span>Find library</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="step3-indicator">
+      <div class="step-num">3</div><span>Browse results</span>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+<div class="container">
+
+  <!-- HOW IT WORKS -->
+  <div class="how-section" id="how-section">
+    <h2>How it works</h2>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="n">01</div>
+        <div class="t">Export from StoryGraph</div>
+        <div class="d">Download your library as a CSV from your StoryGraph account settings.</div>
+      </div>
+      <div class="how-step">
+        <div class="n">02</div>
+        <div class="t">Find your library</div>
+        <div class="d">Type your city or library name — we'll find your Libby catalog automatically.</div>
+      </div>
+      <div class="how-step">
+        <div class="n">03</div>
+        <div class="t">See what's available</div>
+        <div class="d">Borrow instantly or place holds with one click. Books you own are filtered out.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 1: CSV UPLOAD -->
+  <div class="panel" id="panel-csv">
+    <div class="panel-title">
+      <div class="step-badge">1</div>
+      Export your StoryGraph library
+    </div>
+    <div class="callout">
+      <strong>How to get your CSV:</strong>
+      <ol>
+        <li>Go to <a href="https://app.thestorygraph.com" target="_blank">app.thestorygraph.com</a> and log in</li>
+        <li>Click your profile icon (top right) → <strong>Account</strong></li>
+        <li>Scroll down to <strong>Import and Export Data</strong></li>
+        <li>Click <strong>Export your library</strong> — a CSV file will download</li>
+        <li>Upload that file below ↓</li>
+      </ol>
+    </div>
+    <div class="upload-zone" id="drop-zone">
+      <input type="file" id="csv-file" accept=".csv">
+      <div class="upload-icon">📄</div>
+      <div class="upload-title">Click to upload your StoryGraph CSV</div>
+      <div class="upload-hint">or drag and drop it here — your file never leaves your browser</div>
+    </div>
+    <div class="upload-success" id="upload-success">
+      <span>✓</span>
+      <span id="upload-msg"></span>
+    </div>
+  </div>
+
+  <!-- STEP 2: LIBRARY SEARCH -->
+  <div class="panel" id="panel-library" style="opacity:.45;pointer-events:none;">
+    <div class="panel-title">
+      <div class="step-badge">2</div>
+      Find your library
+    </div>
+    <p class="panel-desc">Type the name of your public library or city. We'll search the OverDrive/Libby directory to find your catalog automatically — no URL digging needed.</p>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="lib-search" placeholder="e.g. DC Public Library, Brooklyn, Alameda County…" autocomplete="off">
+    </div>
+    <div class="lib-results" id="lib-results"></div>
+    <div class="lib-selected" id="lib-selected">
+      <span>✓</span>
+      <div>
+        <div id="lib-selected-name" style="font-weight:500;"></div>
+        <div id="lib-selected-loc" style="font-size:.75rem;margin-top:1px;"></div>
+      </div>
+      <button onclick="clearLibrary()">Change</button>
+    </div>
+
+    <div class="format-label" style="margin-top:1rem;">I'm interested in:</div>
+    <div class="format-chips">
+      <div class="format-chip selected" data-format="ebook">📖 eBooks</div>
+      <div class="format-chip selected" data-format="audiobook">🎧 Audiobooks</div>
+    </div>
+
+    <button class="run-btn" id="run-btn" disabled onclick="runSearch()">
+      Search my library catalog →
+    </button>
+
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-bar-outer">
+        <div class="progress-bar-inner" id="progress-bar"></div>
+      </div>
+      <div class="progress-label" id="progress-label">Starting…</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results-section">
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <div class="filter-row" id="filter-row"></div>
+
+    <div class="book-grid" id="book-grid"></div>
+    <div class="empty-msg" id="empty-msg" style="display:none">No books match that filter.</div>
+
+    <div style="margin-top:1.5rem;">
+      <button class="run-btn" style="background:var(--paper);color:var(--ink);border:1px solid var(--border);" onclick="resetAll()">
+        ← Start over with a new CSV
+      </button>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<footer class="site-footer">
+  TBR on Libby &nbsp;·&nbsp; No data stored — everything runs in your browser &nbsp;·&nbsp;
+  Availability data from <a href="https://www.overdrive.com" target="_blank">OverDrive</a>
+</footer>
+
+<script>
+// ── State ──
+let parsedBooks   = { needsLibrary: [], alreadyOwned: [] };
+let selectedLib   = null;  // { name, key, location }
+let searchResults = [];
+let activeFilter  = 'all';
+let libSearchTimer = null;
+
+// ── OVERDRIVE LIBRARY DIRECTORY SEARCH ──
+// Uses OverDrive's public library-finder endpoint
+async function searchLibraries(query) {
+  if (query.length < 2) return [];
+  const url = `https://thunder.api.overdrive.com/v2/libraries?query=${encodeURIComponent(query)}&perPage=8&page=1`;
+  try {
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) return [];
+    const data = await r.json();
+    return (data.items || []).map(lib => ({
+      name:     lib.name || lib.preferredKey,
+      key:      lib.preferredKey || lib.websiteId,
+      location: [lib.city, lib.stateOrProvince, lib.country].filter(Boolean).join(', '),
+      type:     lib.type || ''
+    }));
+  } catch { return []; }
+}
+
+// ── LIBRARY SEARCH UI ──
+const libInput   = document.getElementById('lib-search');
+const libResults = document.getElementById('lib-results');
+
+libInput.addEventListener('input', () => {
+  clearTimeout(libSearchTimer);
+  const q = libInput.value.trim();
+  if (q.length < 2) { libResults.classList.remove('show'); return; }
+  libResults.innerHTML = '<div style="padding:.7rem 1rem;font-size:.82rem;color:var(--muted)"><span class="spinner"></span> Searching…</div>';
+  libResults.classList.add('show');
+  libSearchTimer = setTimeout(() => doLibSearch(q), 350);
+});
+
+async function doLibSearch(q) {
+  const libs = await searchLibraries(q);
+  if (!libs.length) {
+    libResults.innerHTML = '<div style="padding:.7rem 1rem;font-size:.82rem;color:var(--muted)">No libraries found — try a different search</div>';
+    return;
+  }
+  libResults.innerHTML = libs.map(lib => `
+    <div class="lib-result-item" onclick="selectLibrary(${JSON.stringify(lib).replace(/"/g,'&quot;')})">
+      <div>
+        <div class="lib-name">${lib.name}</div>
+        <div class="lib-location">${lib.location}</div>
+      </div>
+      <div class="lib-tag">${lib.key}</div>
+    </div>`).join('');
+}
+
+function selectLibrary(lib) {
+  selectedLib = lib;
+  libResults.classList.remove('show');
+  libInput.value = '';
+  document.getElementById('lib-selected-name').textContent = lib.name;
+  document.getElementById('lib-selected-loc').textContent  = lib.location;
+  document.getElementById('lib-selected').classList.add('show');
+  checkRunReady();
+  document.getElementById('step2-indicator').classList.add('done');
+}
+
+function clearLibrary() {
+  selectedLib = null;
+  document.getElementById('lib-selected').classList.remove('show');
+  document.getElementById('step2-indicator').classList.remove('done');
+  checkRunReady();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#lib-results') && !e.target.closest('#lib-search'))
+    libResults.classList.remove('show');
+});
+
+// ── FORMAT CHIPS ──
+const selectedFormats = new Set(['ebook', 'audiobook']);
+document.querySelectorAll('.format-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const f = chip.dataset.format;
+    if (selectedFormats.has(f)) {
+      if (selectedFormats.size === 1) return; // keep at least one
+      selectedFormats.delete(f);
+      chip.classList.remove('selected');
+    } else {
+      selectedFormats.add(f);
+      chip.classList.add('selected');
+    }
+  });
+});
+
+// ── CSV UPLOAD ──
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('csv-file');
+
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  if (!file.name.endsWith('.csv')) {
+    alert('Please upload a .csv file from StoryGraph.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const result = parseStoryGraphCSV(e.target.result);
+    if (!result.needsLibrary.length && !result.alreadyOwned.length) {
+      alert("No to-read books found. Make sure you exported your full library from StoryGraph (not just one shelf).");
+      return;
+    }
+    parsedBooks = result;
+    const total   = result.needsLibrary.length + result.alreadyOwned.length;
+    const ownedTxt = result.alreadyOwned.length ? ` · ${result.alreadyOwned.length} you already own will be skipped` : '';
+    document.getElementById('upload-msg').textContent =
+      `✓ Found ${total} TBR books — searching library for ${result.needsLibrary.length}${ownedTxt}`;
+    document.getElementById('upload-success').classList.add('show');
+    document.getElementById('panel-library').style.opacity = '1';
+    document.getElementById('panel-library').style.pointerEvents = 'auto';
+    document.getElementById('step1-indicator').classList.add('done');
+    document.getElementById('step2-indicator').classList.add('active');
+    checkRunReady();
+  };
+  reader.readAsText(file);
+}
+
+// ── CSV PARSER ──
+function parseStoryGraphCSV(text) {
+  const lines   = text.split(/\r?\n/);
+  const headers = parseCSVRow(lines[0]).map(h => h.trim().toLowerCase());
+
+  const col = (...pats) => {
+    for (const pat of pats)
+      for (let i = 0; i < headers.length; i++)
+        if (headers[i].includes(pat)) return i;
+    return -1;
+  };
+
+  const iTitle  = col('title');
+  const iAuthor = col('authors', 'author');
+  const iStatus = col('read status', 'read-status', 'status');
+  const iOwned  = col('owned');
+  const iFormat = col('format');
+  const iPages  = col('pages', 'num pages');
+  const iISBN   = col('isbn');
+
+  const needsLibrary = [], alreadyOwned = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const cols   = parseCSVRow(lines[i]);
+    const get    = idx => idx >= 0 && idx < cols.length ? cols[idx].trim() : '';
+    const status = get(iStatus).toLowerCase();
+
+    if (status && !['to-read','to read','want to read','tbr'].includes(status)) continue;
+
+    const title = get(iTitle);
+    if (!title) continue;
+
+    const book = {
+      title,
+      author: get(iAuthor),
+      format: get(iFormat),
+      pages:  get(iPages),
+      isbn:   get(iISBN),
+    };
+
+    if (get(iOwned).toLowerCase() === 'yes') alreadyOwned.push(book);
+    else needsLibrary.push(book);
+  }
+
+  return { needsLibrary, alreadyOwned };
+}
+
+function parseCSVRow(line) {
+  const result = []; let cur = ''; let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (c === ',' && !inQuote) {
+      result.push(cur); cur = '';
+    } else cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── RUN BUTTON ──
+function checkRunReady() {
+  const ready = parsedBooks.needsLibrary.length > 0 && selectedLib !== null;
+  document.getElementById('run-btn').disabled = !ready;
+}
+
+// ── MAIN SEARCH ──
+const FORMATS_MAP = {
+  ebook:      ['ebook-epub-adobe','ebook-epub-open','ebook-overdrive','ebook-kindle'],
+  audiobook:  ['audiobook-mp3','audiobook-overdrive']
+};
+
+async function runSearch() {
+  const books     = parsedBooks.needsLibrary;
+  const libKey    = selectedLib.key;
+  const fmtParams = [...selectedFormats].flatMap(f => FORMATS_MAP[f] || []).join(',');
+
+  document.getElementById('run-btn').style.display = 'none';
+  document.getElementById('progress-wrap').classList.add('show');
+  document.getElementById('results-section').classList.remove('show');
+  document.getElementById('how-section').style.display = 'none';
+
+  const results = [];
+  const BATCH   = 4;    // parallel requests
+  const DELAY   = 300;  // ms between batches
+
+  for (let i = 0; i < books.length; i += BATCH) {
+    const batch  = books.slice(i, i + BATCH);
+    const batchResults = await Promise.all(batch.map(b => searchOverDrive(b, libKey, fmtParams)));
+    results.push(...batchResults);
+
+    const pct = Math.round(((i + batch.length) / books.length) * 100);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-label').textContent =
+      `Checking ${Math.min(i + BATCH, books.length)} of ${books.length} books…`;
+
+    if (i + BATCH < books.length) await sleep(DELAY);
+  }
+
+  searchResults = results;
+  document.getElementById('progress-wrap').classList.remove('show');
+  document.getElementById('step3-indicator').classList.add('active');
+  renderResults(results, parsedBooks.alreadyOwned, libKey);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── OVERDRIVE SEARCH ──
+async function searchOverDrive(book, libKey, fmtParams) {
+  const query = book.isbn || `${book.title} ${book.author}`.trim();
+  const url   = `https://thunder.api.overdrive.com/v2/libraries/${libKey}/media?` +
+    `query=${encodeURIComponent(query)}&perPage=5&page=1&format=${encodeURIComponent(fmtParams)}&sort=relevance`;
+  try {
+    const r    = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!r.ok) return { ...book, status: 'not_found' };
+    const data = await r.json();
+    const items = data.items || [];
+    if (!items.length) return { ...book, status: 'not_found' };
+    const best  = items.find(x => x.title?.toLowerCase().includes(book.title.toLowerCase())) || items[0];
+    return extractAvailability(book, best, libKey);
+  } catch { return { ...book, status: 'not_found' }; }
+}
+
+function extractAvailability(book, item, libKey) {
+  const fmts  = (item.formats || []).map(f => f.id || '');
+  const hasEB = fmts.some(f => f.includes('epub') || f.includes('ebook'));
+  const hasAB = fmts.some(f => f.includes('audiobook'));
+  const fmtLabel = hasEB && hasAB ? 'eBook + Audiobook' : hasEB ? 'eBook' : hasAB ? 'Audiobook' : '';
+
+  const av   = item.availability || {};
+  const status = (av.isAlwaysAvailable || (av.isAvailable && av.copiesAvailable > 0))
+    ? 'available' : 'hold';
+
+  const libbyUrl = `https://libbyapp.com/library/${libKey}/search/query-${encodeURIComponent(item.title || book.title)}/page-1`;
+
+  return {
+    ...book,
+    status,
+    odTitle:  item.title  || book.title,
+    odAuthor: (item.creators || []).map(c => c.name).join(', ') || book.author,
+    cover:    item.covers?.cover300Wide?.href || '',
+    fmtLabel,
+    copiesOwned: av.copiesOwned || 0,
+    copiesAvail: av.copiesAvailable || 0,
+    holds:       av.numberOfHolds || 0,
+    libbyUrl,
+  };
+}
+
+// ── RENDER RESULTS ──
+const SPINE_COLORS = [
+  ['#9FE1CB','#085041'],['#AFA9EC','#26215C'],['#F5C4B3','#4A1B0C'],
+  ['#B5D4F4','#042C53'],['#C0DD97','#173404'],['#FAC775','#412402'],
+  ['#F4C0D1','#4B1528'],['#D3D1C7','#2C2C2A'],['#85B7EB','#042C53'],
+];
+
+function getInitials(title) {
+  return title.split(' ').slice(0,2).map(w => w[0]||'').join('').toUpperCase();
+}
+
+function renderResults(books, ownedBooks, libKey) {
+  const n_avail  = books.filter(b => b.status === 'available').length;
+  const n_hold   = books.filter(b => b.status === 'hold').length;
+  const n_miss   = books.filter(b => b.status === 'not_found').length;
+  const n_owned  = ownedBooks.length;
+
+  // Stats
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card avail"><div class="num">${n_avail}</div><div class="lbl">Borrow now</div></div>
+    <div class="stat-card hold"><div class="num">${n_hold}</div><div class="lbl">Place hold</div></div>
+    <div class="stat-card miss"><div class="num">${n_miss}</div><div class="lbl">Not in catalog</div></div>
+    ${n_owned ? `<div class="stat-card owned"><div class="num">${n_owned}</div><div class="lbl">Already own</div></div>` : ''}
+  `;
+
+  // Filters
+  document.getElementById('filter-row').innerHTML = `
+    <button class="filter-btn on" data-f="all"   onclick="setFilter('all',this)">All <span class="ct">${books.length + n_owned}</span></button>
+    <button class="filter-btn" data-f="available" onclick="setFilter('available',this)">✓ Borrow now <span class="ct">${n_avail}</span></button>
+    <button class="filter-btn" data-f="hold"      onclick="setFilter('hold',this)">⏳ Hold <span class="ct">${n_hold}</span></button>
+    <button class="filter-btn" data-f="not_found" onclick="setFilter('not_found',this)">Not in catalog <span class="ct">${n_miss}</span></button>
+    ${n_owned ? `<button class="filter-btn" data-f="owned" onclick="setFilter('owned',this)">Already own <span class="ct">${n_owned}</span></button>` : ''}
+    <input type="text" id="book-search" placeholder="Search…" oninput="applyFilters()">
+  `;
+
+  // Cards — library books + owned books
+  const allCards = [
+    ...books.map((b,i) => makeCard(b, i, null)),
+    ...ownedBooks.map((b,i) => makeCard(b, i, 'owned')),
+  ];
+  document.getElementById('book-grid').innerHTML = allCards.join('');
+  document.getElementById('results-section').classList.add('show');
+  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function makeCard(book, i, forceStatus) {
+  const status = forceStatus || book.status || 'not_found';
+  const [bg, fg] = SPINE_COLORS[i % SPINE_COLORS.length];
+  const cover    = book.cover || '';
+  const spine    = cover
+    ? `<div class="spine"><img src="${cover}" alt="" loading="lazy"></div>`
+    : `<div class="spine" style="background:${bg};color:${fg}">${getInitials(book.title)}</div>`;
+
+  const title  = escHtml(book.odTitle  || book.title);
+  const author = escHtml(book.odAuthor || book.author || '');
+  const pages  = book.pages ? ` · ${book.pages}p` : '';
+  const fmt    = (book.fmtLabel || book.format) ? `<span class="tag t-fmt">${escHtml(book.fmtLabel || book.format)}</span>` : '';
+  const url    = book.libbyUrl || '#';
+  const co     = book.copiesOwned || 0, ca = book.copiesAvail || 0, holds = book.holds || 0;
+
+  let tag = '', action = '', detail = '';
+
+  if (status === 'available') {
+    tag    = `<span class="tag t-avail">✓ Available</span>${fmt}`;
+    action = `<a class="btn-borrow" href="${url}" target="_blank">Borrow on Libby →</a>`;
+    detail = co ? `<div class="hold-detail">${ca} of ${co} cop${co===1?'y':'ies'} available</div>` : '';
+  } else if (status === 'hold') {
+    tag    = `<span class="tag t-hold">⏳ Hold queue</span>${fmt}`;
+    action = `<a class="btn-hold" href="${url}" target="_blank">Place hold →</a>`;
+    const w = holds ? ` · ${holds} hold${holds===1?'':'s'}` : '';
+    detail = co ? `<div class="hold-detail">${co} cop${co===1?'y':'ies'} owned${w}</div>` : '';
+  } else if (status === 'owned') {
+    tag    = `<span class="tag t-owned">✓ You own this</span>${book.format ? `<span class="tag t-fmt">${escHtml(book.format)}</span>` : ''}`;
+    action = '';
+    detail = '';
+  } else {
+    tag    = `<span class="tag t-miss">Not in catalog</span>`;
+    const q = encodeURIComponent(book.title + ' ' + (book.author||''));
+    action = `<a class="btn-wc" href="https://www.worldcat.org/search?q=${q}" target="_blank">Search WorldCat</a>`;
+  }
+
+  return `<div class="book-card" data-status="${status}" data-title="${escAttr(title)}" data-author="${escAttr(author)}">
+    ${spine}
+    <div class="bk-info">
+      <div class="bk-title">${title}</div>
+      <div class="bk-author">${author}${pages}</div>
+      <div class="bk-tags">${tag}</div>
+      <div class="bk-action">${action}${detail}</div>
+    </div>
+  </div>`;
+}
+
+// ── FILTER & SEARCH ──
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  applyFilters();
+}
+
+function applyFilters() {
+  const q     = (document.getElementById('book-search')?.value || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('.book-card');
+  let vis = 0;
+  cards.forEach(card => {
+    const mf = activeFilter === 'all' || card.dataset.status === activeFilter;
+    const ms = !q || card.dataset.title.includes(q) || card.dataset.author.includes(q);
+    card.classList.toggle('hidden', !(mf && ms));
+    if (mf && ms) vis++;
+  });
+  document.getElementById('empty-msg').style.display = vis === 0 ? 'block' : 'none';
+}
+
+// ── RESET ──
+function resetAll() {
+  parsedBooks  = { needsLibrary: [], alreadyOwned: [] };
+  selectedLib  = null;
+  searchResults = [];
+  activeFilter  = 'all';
+
+  document.getElementById('upload-success').classList.remove('show');
+  document.getElementById('csv-file').value = '';
+  document.getElementById('lib-selected').classList.remove('show');
+  document.getElementById('lib-search').value = '';
+  document.getElementById('panel-library').style.opacity = '.45';
+  document.getElementById('panel-library').style.pointerEvents = 'none';
+  document.getElementById('run-btn').style.display = '';
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('results-section').classList.remove('show');
+  document.getElementById('how-section').style.display = '';
+  document.querySelectorAll('.step-item').forEach((s,i) => {
+    s.classList.remove('done');
+    if (i===0) s.classList.add('active'); else s.classList.remove('active');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── UTILS ──
+function escHtml(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s)  { return String(s||'').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>
