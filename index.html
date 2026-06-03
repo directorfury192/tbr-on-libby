@@ -131,9 +131,7 @@ a { color: inherit; }
 .upload-zone:hover, .upload-zone.drag-over {
   border-color: var(--ink); background: #f5f0e8;
 }
-.upload-zone input[type="file"] {
-  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-}
+/* file input is now a hidden sibling, not inside the zone */
 .upload-icon { font-size: 2rem; margin-bottom: .6rem; }
 .upload-title { font-size: .95rem; font-weight: 500; margin-bottom: .3rem; }
 .upload-hint { font-size: .78rem; color: var(--muted); }
@@ -414,8 +412,8 @@ a { color: inherit; }
         <li>Upload that file below ↓</li>
       </ol>
     </div>
-    <div class="upload-zone" id="drop-zone">
-      <input type="file" id="csv-file" accept=".csv">
+    <input type="file" id="csv-file" accept=".csv" style="display:none">
+    <div class="upload-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload CSV file">
       <div class="upload-icon">📄</div>
       <div class="upload-title">Click to upload your StoryGraph CSV</div>
       <div class="upload-hint">or drag and drop it here — your file never leaves your browser</div>
@@ -854,14 +852,28 @@ document.querySelectorAll('.format-chip').forEach(chip => {
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('csv-file');
 
-dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+// Click or keyboard → open file picker
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+// Drag-and-drop
+dropZone.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-over'); });
 dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
+  e.preventDefault(); e.stopPropagation();
+  dropZone.classList.remove('drag-over');
   const f = e.dataTransfer.files[0];
   if (f) handleFile(f);
 });
-fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+// File picker selection
+fileInput.addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) handleFile(f);
+  // reset so re-selecting the same file still triggers change
+  fileInput.value = '';
+});
 
 function handleFile(file) {
   if (!file.name.endsWith('.csv')) {
