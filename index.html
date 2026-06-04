@@ -799,20 +799,17 @@ async function runSearch() {
   searchResults = [];
   const libKey = selectedLib.key;
 
-  // Determine if key is numeric (websiteId) or slug
-  const isNumericKey = /^\d+$/.test(String(libKey));
-
   for (let i = 0; i < books.length; i++) {
     const book = books[i];
     const pct  = Math.round((i / books.length) * 100);
     pbar.style.width = pct + '%';
     plbl.textContent = `Searching ${i+1} of ${books.length}: "${book.title}"`;
 
-    const result = await searchBook(book, libKey, isNumericKey, formats);
+    const result = await searchBook(book, libKey, formats);
     searchResults.push(result);
 
-    // Throttle to avoid rate limits
-    await sleep(120);
+    // Throttle — be polite to OverDrive servers (matches Python's 0.4s delay)
+    await sleep(400);
   }
 
   pbar.style.width = '100%';
@@ -825,57 +822,80 @@ async function runSearch() {
   renderResults();
 }
 
-async function searchBook(book, libKey, isNumericKey, formats) {
-  const base = { ...book, status: 'missing', formats: [] };
+async function searchBook(book, libKey, formats) {
+  const base = { ...book, status: 'missing', coverUrl: null, formatLabel: '', holds: 0, copiesOwned: 0, copiesAvail: 0 };
 
-  for (const fmt of formats) {
-    try {
-      const fmtParam = fmt === 'ebook' ? 'ebook-epub-adobe,ebook-kindle,ebook-epub-open' : 'audiobook-mp3,audiobook-overdrive';
+  // Search both format types in one call, exactly like the Python script
+  const allFormats = 'ebook-epub-adobe,ebook-epub-open,audiobook-mp3,audiobook-overdrive';
+  // Use title+author as query (Python approach), fall back to title only
+  const query = book.author ? `${book.title} ${book.author}` : book.title;
 
-      // Thunder API accepts both slug (dclibrary) and numeric websiteId
-      const url = `https://thunder.api.overdrive.com/v2/libraries/${libKey}/media?query=${encodeURIComponent(book.title)}&format=${encodeURIComponent(fmtParam)}&limit=5&sortBy=relevance`;
+  try {
+    const url = `https://thunder.api.overdrive.com/v2/libraries/${encodeURIComponent(libKey)}/media?` +
+      `query=${encodeURIComponent(query)}&perPage=5&page=1&format=${encodeURIComponent(allFormats)}&sort=relevance`;
 
-      const res  = await fetch(url);
-      if (!res.ok) continue;
-      const data = await res.json();
-      const items = data.items || [];
-
-      // Find best title match
-      const titleLower = book.title.toLowerCase();
-      const authorLower = book.author.toLowerCase().split(',')[0].trim();
-      const match = items.find(item => {
-        const t = (item.title || '').toLowerCase();
-        const a = (item.firstCreatorName || '').toLowerCase();
-        return t.includes(titleLower.substring(0, 20)) || titleLower.includes(t.substring(0, 20));
-      }) || items[0];
-
-      if (!match) continue;
-
-      // Author cross-check (soft)
-      const matchAuthor = (match.firstCreatorName || '').toLowerCase();
-      if (authorLower && matchAuthor && !matchAuthor.includes(authorLower.split(' ').pop()) && !authorLower.includes(matchAuthor.split(' ').pop())) {
-        continue; // Different book entirely
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TBRonLibby/1.0)',
+        'Accept': 'application/json'
       }
+    });
+    if (!res.ok) return base;
+    const data = await res.json();
+    const items = data.items || [];
+    if (!items.length) return base;
 
-      const avail = match.isAvailable;
-      const holds = match.holdsCount || 0;
-      const copies = match.copiesCount || 0;
-      const coverId = match.coverImageId || match.id;
-      const mediaId = match.id;
+    // Find best match — prefer title substring match (same as Python)
+    const titleLower = book.title.toLowerCase();
+    let match = items.find(item => titleLower.includes((item.title||'').toLowerCase().substring(0,20))
+                                || (item.title||'').toLowerCase().includes(titleLower.substring(0,20)));
+    if (!match) match = items[0];
 
-      base.mediaId  = base.mediaId  || mediaId;
-      base.coverId  = base.coverId  || coverId;
-      base.coverUrl = base.coverUrl || (coverId ? `https://img1.od-cdn.com/ImageType-100/0293-1/{${coverId}}/{00/00/00}Img100.jpg` : null);
-      // Simpler cover URL format
-      if (coverId) base.coverUrl = `https://img1.od-cdn.com/ImageType-200/1523-1/%7B${coverId}%7D/Image200.jpg`;
+    // ── Availability — nested "availability" object (confirmed from Python script) ──
+    const avail       = match.availability || {};
+    const isAvailable = avail.isAvailable || avail.isAlwaysAvailable || false;
+    const copiesOwned = avail.copiesOwned  || avail.ownedCopies      || 0;
+    const copiesAvail = avail.copiesAvailable || avail.availableCopies || 0;
+    const holds       = avail.numberOfHolds   || avail.holdsCount      || 0;
 
-      base.formats.push({ fmt, avail, holds, copies, mediaId });
+    // ── Format label ──
+    const fmts = (match.formats || []).map(f => f.id || f.name || '');
+    const hasEbook = fmts.some(f => f.includes('ebook') || f.includes('epub'));
+    const hasAudio = fmts.some(f => f.includes('audiobook') || f.includes('audio'));
+    const formatLabel = hasEbook && hasAudio ? 'eBook + Audiobook' : hasAudio ? 'Audiobook' : 'eBook';
 
-      if (avail) base.status = 'available';
-      else if (base.status !== 'available') base.status = 'hold';
+    // Only include formats the user asked for
+    const wantsEbook = formats.includes('ebook');
+    const wantsAudio = formats.includes('audiobook');
+    if (!wantsEbook && hasEbook && !hasAudio) return base;
+    if (!wantsAudio && hasAudio && !hasEbook) return base;
 
-    } catch(e) { /* skip on error */ }
-  }
+    // ── Cover — use covers.cover300Wide.href (confirmed from Python) ──
+    const covers   = match.covers || {};
+    const coverUrl = (covers.cover300Wide && covers.cover300Wide.href)
+                  || (covers.cover150Wide && covers.cover150Wide.href)
+                  || (covers.cover96Wide  && covers.cover96Wide.href)
+                  || null;
+
+    base.coverUrl    = coverUrl;
+    base.formatLabel = formatLabel;
+    base.holds       = holds;
+    base.copiesOwned = copiesOwned;
+    base.copiesAvail = copiesAvail;
+    base.odTitle     = match.title  || book.title;
+    base.odAuthor    = (match.creators || []).map(c => c.name).join(', ') || book.author;
+
+    // ── Status — same logic as Python ──
+    if (isAvailable || copiesAvail > 0) {
+      base.status = 'available';
+    } else if (copiesOwned > 0) {
+      base.status = 'hold';
+    } else {
+      // In catalog but 0 copies — still holdable
+      base.status = 'hold';
+    }
+
+  } catch(e) { /* network error — leave as missing */ }
 
   return base;
 }
@@ -935,7 +955,6 @@ function filterByText(q) {
 
 function renderCards(filter) {
   const libKey = selectedLib.key;
-  const isNumericKey = /^\d+$/.test(String(libKey));
   const grid = document.getElementById('book-grid');
   grid.innerHTML = '';
 
@@ -953,57 +972,55 @@ function renderCards(filter) {
   document.getElementById('empty-msg').style.display = 'none';
 
   items.forEach((book, idx) => {
+    const displayTitle  = book.odTitle  || book.title;
+    const displayAuthor = book.odAuthor || book.author;
     const [bg, fg] = spineColor(book.title);
-    const initials = (book.title || '').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+    const inits = (book.title || '').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
 
-    const coverHtml = book.coverUrl
-      ? `<img src="${escAttr(book.coverUrl)}" alt="" onerror="this.style.display='none';this.parentNode.style.background='${bg}';this.parentNode.style.color='${fg}';this.parentNode.textContent='${initials}'">`
-      : ``;
     const spineStyle = book.coverUrl ? '' : `background:${bg};color:${fg};`;
+    const coverHtml  = book.coverUrl
+      ? `<img src="${escAttr(book.coverUrl)}" alt="" loading="lazy" onerror="this.style.display='none';this.parentNode.style.background='${bg}';this.parentNode.style.color='${fg}';this.parentNode.textContent='${inits}'">`
+      : ``;
+
+    // Libby deep-link — same format as Python
+    const libbyLink = `https://libbyapp.com/library/${encodeURIComponent(libKey)}/search/query-${encodeURIComponent(displayTitle)}/page-1`;
 
     let tagHtml = '', actionHtml = '';
+
     if (book.status === 'available') {
       tagHtml = `<span class="tag t-avail">✓ Available</span>`;
-      book.formats.forEach(f => {
-        if (f.avail) {
-          const label = f.fmt === 'ebook' ? '📖 eBook' : '🎧 Audiobook';
-          tagHtml += `<span class="tag t-fmt">${label}</span>`;
-          const link = isNumericKey
-            ? `https://libbyapp.com/search/${libKey}/search/query-${encodeURIComponent(book.title)}`
-            : `https://libbyapp.com/library/${libKey}/search/query-${encodeURIComponent(book.title)}`;
-          actionHtml += `<a class="btn-borrow" href="${escAttr(link)}" target="_blank">Borrow ${f.fmt === 'ebook' ? 'eBook' : 'audiobook'}</a> `;
-        }
-      });
+      if (book.formatLabel) tagHtml += `<span class="tag t-fmt">${escHtml(book.formatLabel)}</span>`;
+      const copiesInfo = book.copiesOwned ? `${book.copiesAvail} of ${book.copiesOwned} cop${book.copiesOwned!==1?'ies':'y'} available` : '';
+      actionHtml = `<a class="btn-borrow" href="${escAttr(libbyLink)}" target="_blank">Borrow on Libby →</a>`;
+      if (copiesInfo) actionHtml += `<div class="hold-detail">${copiesInfo}</div>`;
+
     } else if (book.status === 'hold') {
-      tagHtml = `<span class="tag t-hold">⏳ Hold available</span>`;
-      book.formats.forEach(f => {
-        const label = f.fmt === 'ebook' ? '📖 eBook' : '🎧 Audiobook';
-        tagHtml += `<span class="tag t-fmt">${label}</span>`;
-        const link = isNumericKey
-          ? `https://libbyapp.com/search/${libKey}/search/query-${encodeURIComponent(book.title)}`
-          : `https://libbyapp.com/library/${libKey}/search/query-${encodeURIComponent(book.title)}`;
-        const holdsInfo = f.holds ? `${f.holds} hold${f.holds!==1?'s':''}` : '';
-        actionHtml += `<a class="btn-hold" href="${escAttr(link)}" target="_blank">Place hold</a> `;
-        if (holdsInfo) actionHtml += `<div class="hold-detail">${holdsInfo} · ${f.copies} cop${f.copies!==1?'ies':'y'}</div>`;
-      });
+      tagHtml = `<span class="tag t-hold">⏳ Hold queue</span>`;
+      if (book.formatLabel) tagHtml += `<span class="tag t-fmt">${escHtml(book.formatLabel)}</span>`;
+      const holdsInfo = book.holds ? `${book.holds} hold${book.holds!==1?'s':''}` : '';
+      const copiesInfo = book.copiesOwned ? `${book.copiesOwned} cop${book.copiesOwned!==1?'ies':'y'} owned` : '';
+      actionHtml = `<a class="btn-hold" href="${escAttr(libbyLink)}" target="_blank">Place hold →</a>`;
+      if (holdsInfo || copiesInfo) actionHtml += `<div class="hold-detail">${[copiesInfo, holdsInfo].filter(Boolean).join(' · ')}</div>`;
+
     } else if (book.status === 'missing') {
       tagHtml = `<span class="tag t-miss">Not in catalog</span>`;
       const wcLink = `https://www.worldcat.org/search?q=${encodeURIComponent(book.title + ' ' + book.author)}`;
       actionHtml = `<a class="btn-wc" href="${escAttr(wcLink)}" target="_blank">Find elsewhere</a>`;
+
     } else if (book.status === 'owned') {
       tagHtml = `<span class="tag t-owned">✓ You own this</span>`;
     }
 
     const card = document.createElement('div');
     card.className = 'book-card';
-    card.dataset.title  = book.title;
-    card.dataset.author = book.author;
+    card.dataset.title  = displayTitle.toLowerCase();
+    card.dataset.author = displayAuthor.toLowerCase();
     card.style.animationDelay = (idx * 0.03) + 's';
     card.innerHTML = `
-      <div class="spine" style="${spineStyle}">${coverHtml || initials}</div>
+      <div class="spine" style="${spineStyle}">${coverHtml || inits}</div>
       <div class="bk-info">
-        <div class="bk-title">${escHtml(book.title)}</div>
-        <div class="bk-author">${escHtml(book.author)}</div>
+        <div class="bk-title">${escHtml(displayTitle)}</div>
+        <div class="bk-author">${escHtml(displayAuthor)}</div>
         <div class="bk-tags">${tagHtml}</div>
         <div class="bk-action">${actionHtml}</div>
       </div>`;
