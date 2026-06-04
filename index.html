@@ -416,6 +416,17 @@ a { color: inherit; }
     </div>
     <div class="lib-results" id="lib-results"></div>
 
+    <details style="margin-top:.5rem;font-size:.8rem;">
+      <summary style="cursor:pointer;color:var(--muted);">Can't find your library? Enter key manually</summary>
+      <div style="margin-top:.6rem;display:flex;gap:8px;align-items:center;">
+        <input type="text" id="manual-key-input" placeholder="e.g. dclibrary, nypl, lapl"
+          autocomplete="off" spellcheck="false"
+          style="flex:1;padding:.5rem .8rem;border:1.5px solid var(--border);border-radius:7px;font-family:var(--sans);font-size:.85rem;background:var(--paper);outline:none;">
+        <button onclick="applyManualKey()" style="padding:.5rem 1rem;background:var(--ink);color:var(--paper);border:none;border-radius:7px;font-family:var(--sans);font-size:.85rem;cursor:pointer;white-space:nowrap;">Use this key</button>
+      </div>
+      <div style="margin-top:.4rem;font-size:.75rem;color:var(--muted);">Find your key at <a href="https://libbyapp.com" target="_blank" style="color:var(--blue);text-decoration:underline;">libbyapp.com</a> → Add a library → check the URL for the last segment (e.g. <code>dclibrary</code>)</div>
+    </details>
+
     <div class="lib-selected" id="lib-selected">
       <span>✓</span>
       <div>
@@ -642,6 +653,13 @@ async function fetchLibraries(query) {
     const res = await fetch(`https://locate.libbyapp.com/autocomplete/${encodeURIComponent(query)}`);
     if (!res.ok) throw new Error('API error ' + res.status);
     const data = await res.json();
+    // Log first branch so developers can see the real field names
+    if (data.branches && data.branches.length > 0) {
+      const b0 = data.branches[0];
+      console.log('[TBR on Libby] Branch[0] top-level keys:', Object.keys(b0));
+      console.log('[TBR on Libby] Branch[0].systems:', JSON.stringify(b0.systems, null, 2));
+      console.log('[TBR on Libby] Branch[0] full:', JSON.stringify(b0, null, 2));
+    }
     renderLibResults(data.branches || []);
   } catch(err) {
     libResults.innerHTML = `<div class="lib-no-results">Search unavailable — try entering your library key manually below.</div>`;
@@ -658,21 +676,46 @@ function renderLibResults(branches) {
     return;
   }
 
-  // Deduplicate by preferredKey (same system, multiple branches)
-  const seen = new Set();
-  const unique = branches.filter(b => {
-    const k = b.preferredKey || b.websiteId || b.id;
-    if (seen.has(k)) return false;
-    seen.add(k); return true;
-  });
+  // Each branch has a `systems` array containing the parent library system(s).
+  // We group by system id and show system-level name/key, not branch name.
+  // Branch fields confirmed from API: id, name (branch), city, regionCode,
+  // systemIds, systems:[{...}], relevance
+  const systemMap = new Map();
 
-  libResults.innerHTML = unique.map((b, i) => {
-    const key = b.preferredKey || b.slug || b.websiteId || b.id;
-    const name = escHtml(b.name || b.systemName || 'Unknown Library');
-    const addr = escHtml(b.address || b.city || '');
-    return `<div class="lib-result-item" data-key="${escAttr(String(key))}" data-name="${escAttr(b.name || b.systemName || '')}" data-addr="${escAttr(b.address || b.city || '')}" onclick="selectLibrary(this)">
-      <div class="lib-name">${name}</div>
-      ${addr ? `<div class="lib-location">${addr}</div>` : ''}
+  for (const b of branches) {
+    const sysList = b.systems && b.systems.length ? b.systems : null;
+    if (sysList) {
+      for (const sys of sysList) {
+        const sysId = sys.id || sys.websiteId;
+        if (!systemMap.has(sysId)) {
+          // The system object holds the slug key and full name
+          const key  = sys.preferredKey || sys.websiteKey || sys.slug
+                    || sys.key          || String(sysId);
+          const name = sys.name || sys.systemName || sys.fullName || 'Unknown Library';
+          const addr = [b.city, b.regionCode].filter(Boolean).join(', ');
+          systemMap.set(sysId, { key, name, addr });
+        }
+      }
+    } else {
+      // Fallback: no systems array, use branch-level fields
+      const sysId = (b.systemIds && b.systemIds[0]) || b.id;
+      if (!systemMap.has(sysId)) {
+        const key  = b.preferredKey || b.websiteKey || b.slug || String(sysId);
+        const name = b.name || 'Unknown Library';
+        const addr = [b.city, b.regionCode].filter(Boolean).join(', ');
+        systemMap.set(sysId, { key, name, addr });
+      }
+    }
+  }
+
+  libResults.innerHTML = Array.from(systemMap.values()).map(s => {
+    return `<div class="lib-result-item"
+        data-key="${escAttr(s.key)}"
+        data-name="${escAttr(s.name)}"
+        data-addr="${escAttr(s.addr)}"
+        onclick="selectLibrary(this)">
+      <div class="lib-name">${escHtml(s.name)}</div>
+      <div class="lib-location">${escHtml(s.addr || s.key)}</div>
     </div>`;
   }).join('');
   libResults.classList.add('show');
@@ -692,6 +735,17 @@ function selectLibrary(el) {
   document.getElementById('lib-selected-loc').textContent  = addr;
   document.getElementById('lib-selected').classList.add('show');
 
+  checkRunReady();
+}
+
+function applyManualKey() {
+  const key = document.getElementById('manual-key-input').value.trim().toLowerCase().replace(/[^a-z0-9\-]/g, '');
+  if (!key) return;
+  selectedLib = { key, name: key, address: 'Entered manually' };
+  document.getElementById('lib-selected-name').textContent = key;
+  document.getElementById('lib-selected-loc').textContent  = 'Entered manually';
+  document.getElementById('lib-selected').classList.add('show');
+  libInput.value = key;
   checkRunReady();
 }
 
@@ -778,12 +832,8 @@ async function searchBook(book, libKey, isNumericKey, formats) {
     try {
       const fmtParam = fmt === 'ebook' ? 'ebook-epub-adobe,ebook-kindle,ebook-epub-open' : 'audiobook-mp3,audiobook-overdrive';
 
-      let url;
-      if (isNumericKey) {
-        url = `https://thunder.api.overdrive.com/v2/libraries/${libKey}/media?query=${encodeURIComponent(book.title)}&format=${encodeURIComponent(fmtParam)}&limit=5`;
-      } else {
-        url = `https://thunder.api.overdrive.com/v2/libraries/${libKey}/media?query=${encodeURIComponent(book.title)}&format=${encodeURIComponent(fmtParam)}&limit=5`;
-      }
+      // Thunder API accepts both slug (dclibrary) and numeric websiteId
+      const url = `https://thunder.api.overdrive.com/v2/libraries/${libKey}/media?query=${encodeURIComponent(book.title)}&format=${encodeURIComponent(fmtParam)}&limit=5&sortBy=relevance`;
 
       const res  = await fetch(url);
       if (!res.ok) continue;
