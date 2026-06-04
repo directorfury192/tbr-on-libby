@@ -501,18 +501,18 @@ function parseCSV(text) {
   if (!lines.length) return;
 
   // Find header row
-  const headerIdx = lines.findIndex(l => l.toLowerCase().includes('title') && l.toLowerCase().includes('author'));
+  const headerIdx = lines.findIndex(l => l.toLowerCase().includes('title') && l.toLowerCase().includes('authors'));
   if (headerIdx < 0) { alert('Could not find a header row in the CSV. Make sure you exported from StoryGraph.'); return; }
 
   const headers = parseCSVRow(lines[headerIdx]).map(h => h.trim().toLowerCase());
   const col = name => headers.indexOf(name);
 
   const iTitle    = col('title');
-  const iAuthor   = col('author');
+  const iAuthor   = col('authors');         // StoryGraph uses "Authors" (plural)
   const iStatus   = col('read status');
-  const iOwned    = col('owned');
+  const iOwned    = col('owned?');          // StoryGraph uses "Owned?" with question mark
 
-  if (iTitle < 0 || iAuthor < 0) { alert('CSV is missing Title or Author columns.'); return; }
+  if (iTitle < 0 || iAuthor < 0) { alert('CSV is missing Title or Authors columns. Make sure you exported from StoryGraph.'); return; }
 
   const tbr = [], owned = [];
 
@@ -523,7 +523,7 @@ function parseCSV(text) {
     const title  = (row[iTitle]  || '').trim();
     const author = (row[iAuthor] || '').trim();
     const status = (row[iStatus] || '').trim().toLowerCase();
-    const isOwned = iOwned >= 0 && (row[iOwned] || '').trim().toLowerCase() === 'true';
+    const isOwned = iOwned >= 0 && (row[iOwned] || '').trim().toLowerCase() === 'yes'; // StoryGraph uses "Yes"/"No"
 
     if (!title) continue;
 
@@ -531,7 +531,7 @@ function parseCSV(text) {
 
     if (isOwned) {
       owned.push(book);
-    } else if (status === 'to-read' || status === 'tbr' || status === '') {
+    } else if (status === 'to-read') {
       tbr.push(book);
     }
   }
