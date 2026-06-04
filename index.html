@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TBR on Libby v1.7 - direct key entry -->
+<!-- TBR on Libby v2.0 - locate.libbyapp.com library search -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -33,19 +33,13 @@
 html { scroll-behavior: smooth; }
 body { font-family: var(--sans); background: var(--paper); color: var(--ink); min-height: 100vh; }
 
-/* ── typography ── */
 h1, h2, h3 { font-family: var(--serif); }
 a { color: inherit; }
 
-/* ── layout ── */
 .container { max-width: 780px; margin: 0 auto; padding: 0 1.5rem; }
 
 /* ── header ── */
-.site-header {
-  background: var(--ink);
-  padding: 2rem 0 1.5rem;
-  color: var(--paper);
-}
+.site-header { background: var(--ink); padding: 2rem 0 1.5rem; color: var(--paper); }
 .site-header .container { display: flex; align-items: center; gap: 1rem; }
 .logo-mark {
   width: 44px; height: 44px; background: var(--accent);
@@ -58,11 +52,8 @@ a { color: inherit; }
 
 /* ── progress steps ── */
 .steps-bar {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  padding: .85rem 0;
-  position: sticky; top: 0; z-index: 100;
-  box-shadow: var(--shadow);
+  background: var(--card); border-bottom: 1px solid var(--border);
+  padding: .85rem 0; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow);
 }
 .steps-inner {
   display: flex; align-items: center; justify-content: center;
@@ -70,31 +61,25 @@ a { color: inherit; }
 }
 .step-item {
   display: flex; align-items: center; gap: 7px;
-  font-size: .78rem; color: var(--hint); font-weight: 400;
-  white-space: nowrap;
+  font-size: .78rem; color: var(--hint); font-weight: 400; white-space: nowrap;
 }
 .step-item.active { color: var(--ink); font-weight: 500; }
-.step-item.done { color: var(--green); }
+.step-item.done   { color: var(--green); }
 .step-num {
-  width: 22px; height: 22px; border-radius: 50%;
-  border: 1.5px solid currentColor;
+  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor;
   display: flex; align-items: center; justify-content: center;
   font-size: .72rem; font-weight: 500; flex-shrink: 0;
 }
-.step-item.done .step-num { background: var(--green); border-color: var(--green); color: #fff; }
-.step-item.active .step-num { background: var(--ink); border-color: var(--ink); color: #fff; }
+.step-item.done   .step-num { background: var(--green); border-color: var(--green); color: #fff; }
+.step-item.active .step-num { background: var(--ink);   border-color: var(--ink);   color: #fff; }
 .step-connector { flex: 1; height: 1px; background: var(--border); min-width: 20px; max-width: 60px; }
 
-/* ── main content area ── */
 .main-content { padding: 2.5rem 0 5rem; }
 
-/* ── cards / panels ── */
+/* ── panels ── */
 .panel {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.75rem;
-  margin-bottom: 1.25rem;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.75rem; margin-bottom: 1.25rem;
 }
 .panel-title {
   font-size: 1rem; font-weight: 600; margin-bottom: .35rem;
@@ -107,7 +92,7 @@ a { color: inherit; }
 }
 .panel-desc { font-size: .85rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.25rem; }
 
-/* ── callout box ── */
+/* ── callout ── */
 .callout {
   background: var(--slate-bg); border-left: 3px solid var(--slate);
   border-radius: 0 6px 6px 0; padding: .75rem 1rem;
@@ -118,34 +103,22 @@ a { color: inherit; }
 .callout li { margin-bottom: .2rem; }
 .callout a { color: var(--blue); text-decoration: underline; }
 
-/* ── upload zone ── */
+/* ── upload ── */
 .upload-zone {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 2rem 1.5rem;
-  text-align: center;
-  transition: border-color .2s, background .2s;
-  background: var(--paper);
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 2rem 1.5rem; text-align: center;
+  transition: border-color .2s, background .2s; background: var(--paper);
 }
 .upload-btn {
-  display: inline-block;
-  margin-top: .75rem;
-  padding: .5rem 1.5rem;
-  background: var(--ink);
-  color: var(--paper);
-  border-radius: 6px;
-  font-size: .85rem;
-  font-weight: 500;
-  cursor: pointer;
+  display: inline-block; margin-top: .75rem; padding: .5rem 1.5rem;
+  background: var(--ink); color: var(--paper); border-radius: 6px;
+  font-size: .85rem; font-weight: 500; cursor: pointer;
 }
 .upload-btn:hover { opacity: .85; }
-.upload-zone:hover, .upload-zone.drag-over {
-  border-color: var(--ink); background: #f5f0e8;
-}
-/* file input is now a hidden sibling, not inside the zone */
-.upload-icon { font-size: 2rem; margin-bottom: .6rem; }
+.upload-zone:hover, .upload-zone.drag-over { border-color: var(--ink); background: #f5f0e8; }
+.upload-icon  { font-size: 2rem; margin-bottom: .6rem; }
 .upload-title { font-size: .95rem; font-weight: 500; margin-bottom: .3rem; }
-.upload-hint { font-size: .78rem; color: var(--muted); }
+.upload-hint  { font-size: .78rem; color: var(--muted); }
 .upload-success {
   display: none; align-items: center; gap: 10px;
   background: var(--green-bg); border: 1px solid #b6d9c2;
@@ -167,21 +140,28 @@ a { color: inherit; }
   position: absolute; left: .75rem; top: 50%; transform: translateY(-50%);
   color: var(--hint); pointer-events: none; font-size: 1rem;
 }
+.search-spinner {
+  position: absolute; right: .75rem; top: 50%; transform: translateY(-50%);
+  display: none;
+}
+.search-spinner.show { display: block; }
+
 .lib-results {
   border: 1px solid var(--border); border-radius: 8px;
-  background: var(--card); max-height: 240px; overflow-y: auto;
-  display: none; box-shadow: var(--shadow);
+  background: var(--card); max-height: 260px; overflow-y: auto;
+  display: none; box-shadow: var(--shadow); margin-top: 4px;
 }
 .lib-results.show { display: block; }
 .lib-result-item {
   padding: .7rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border);
-  transition: background .12s; display: flex; align-items: center; justify-content: space-between;
+  transition: background .12s;
 }
 .lib-result-item:last-child { border-bottom: none; }
-.lib-result-item:hover { background: var(--paper); }
-.lib-name { font-size: .88rem; font-weight: 500; }
-.lib-location { font-size: .75rem; color: var(--muted); margin-top: 1px; }
-.lib-tag { font-size: .7rem; background: var(--slate-bg); color: var(--slate); padding: 2px 8px; border-radius: 12px; }
+.lib-result-item:hover, .lib-result-item.focused { background: var(--paper); }
+.lib-name     { font-size: .88rem; font-weight: 500; }
+.lib-location { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+.lib-no-results { padding: .85rem 1rem; font-size: .85rem; color: var(--muted); text-align: center; }
+
 .lib-selected {
   display: none; align-items: center; gap: 10px;
   background: var(--teal-bg); border: 1px solid #9ed4c6;
@@ -201,9 +181,7 @@ a { color: inherit; }
   background: var(--paper); cursor: pointer; font-family: var(--sans);
   font-size: .8rem; color: var(--muted); transition: all .15s; user-select: none;
 }
-.format-chip.selected {
-  background: var(--ink); color: var(--paper); border-color: var(--ink);
-}
+.format-chip.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .format-label { font-size: .78rem; color: var(--muted); margin-bottom: .5rem; }
 
 /* ── run button ── */
@@ -211,8 +189,7 @@ a { color: inherit; }
   width: 100%; padding: .9rem; border-radius: 8px;
   background: var(--ink); color: var(--paper); border: none;
   font-family: var(--sans); font-size: 1rem; font-weight: 500;
-  cursor: pointer; transition: opacity .15s, transform .1s;
-  margin-top: 1.25rem;
+  cursor: pointer; transition: opacity .15s, transform .1s; margin-top: 1.25rem;
 }
 .run-btn:hover:not(:disabled) { opacity: .88; }
 .run-btn:active:not(:disabled) { transform: scale(.99); }
@@ -221,13 +198,8 @@ a { color: inherit; }
 /* ── progress ── */
 .progress-wrap { display: none; margin-top: 1rem; }
 .progress-wrap.show { display: block; }
-.progress-bar-outer {
-  height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: .6rem;
-}
-.progress-bar-inner {
-  height: 100%; background: var(--ink); border-radius: 3px;
-  transition: width .4s ease; width: 0%;
-}
+.progress-bar-outer { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: .6rem; }
+.progress-bar-inner { height: 100%; background: var(--ink); border-radius: 3px; transition: width .4s ease; width: 0%; }
 .progress-label { font-size: .8rem; color: var(--muted); }
 
 /* ── results ── */
@@ -238,19 +210,16 @@ a { color: inherit; }
   display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 10px; margin-bottom: 1.5rem;
 }
-.stat-card {
-  border-radius: 8px; padding: .9rem 1rem; text-align: center;
-}
+.stat-card { border-radius: 8px; padding: .9rem 1rem; text-align: center; }
 .stat-card .num { font-size: 1.8rem; font-weight: 500; line-height: 1; }
 .stat-card .lbl { font-size: .72rem; margin-top: 4px; opacity: .8; }
-.stat-card.avail  { background: var(--green-bg);  color: var(--green); }
-.stat-card.hold   { background: var(--amber-bg);  color: var(--amber); }
-.stat-card.miss   { background: var(--slate-bg);  color: var(--slate); }
-.stat-card.owned  { background: var(--teal-bg);   color: var(--teal);  }
+.stat-card.avail { background: var(--green-bg); color: var(--green); }
+.stat-card.hold  { background: var(--amber-bg); color: var(--amber); }
+.stat-card.miss  { background: var(--slate-bg); color: var(--slate); }
+.stat-card.owned { background: var(--teal-bg);  color: var(--teal);  }
 
 .filter-row {
-  display: flex; gap: 7px; flex-wrap: wrap; align-items: center;
-  margin-bottom: 1rem;
+  display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;
 }
 .filter-btn {
   padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border);
@@ -288,20 +257,20 @@ a { color: inherit; }
 }
 .spine img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
 
-.bk-info { flex: 1; min-width: 0; }
-.bk-title { font-family: var(--serif); font-size: .9rem; font-weight: 600; line-height: 1.35; margin-bottom: 2px; }
+.bk-info   { flex: 1; min-width: 0; }
+.bk-title  { font-family: var(--serif); font-size: .9rem; font-weight: 600; line-height: 1.35; margin-bottom: 2px; }
 .bk-author { font-size: .74rem; color: var(--muted); margin-bottom: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bk-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.bk-tags   { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 
 .tag {
   font-size: .68rem; padding: 2px 8px; border-radius: 10px;
   display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
 }
-.t-avail  { background: var(--green-bg); color: var(--green); font-weight: 500; }
-.t-hold   { background: var(--amber-bg); color: var(--amber); }
-.t-miss   { background: var(--slate-bg); color: var(--slate); }
-.t-owned  { background: var(--teal-bg);  color: var(--teal);  font-weight: 500; }
-.t-fmt    { background: var(--blue-bg);  color: var(--blue); }
+.t-avail { background: var(--green-bg); color: var(--green); font-weight: 500; }
+.t-hold  { background: var(--amber-bg); color: var(--amber); }
+.t-miss  { background: var(--slate-bg); color: var(--slate); }
+.t-owned { background: var(--teal-bg);  color: var(--teal);  font-weight: 500; }
+.t-fmt   { background: var(--blue-bg);  color: var(--blue); }
 
 .bk-action { margin-top: 7px; }
 .btn-borrow, .btn-hold, .btn-wc {
@@ -320,12 +289,11 @@ a { color: inherit; }
 /* ── footer ── */
 .site-footer {
   background: var(--ink); color: #7a6e64;
-  text-align: center; padding: 1.5rem;
-  font-size: .75rem; line-height: 1.8;
+  text-align: center; padding: 1.5rem; font-size: .75rem; line-height: 1.8;
 }
 .site-footer a { color: #9a8c80; }
 
-/* ── loading spinner ── */
+/* ── spinner ── */
 .spinner {
   width: 16px; height: 16px; border: 2px solid var(--border);
   border-top-color: var(--ink); border-radius: 50%;
@@ -333,14 +301,11 @@ a { color: inherit; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── how-it-works section ── */
+/* ── how-it-works ── */
 .how-section { margin: 2.5rem 0; }
 .how-section h2 { font-size: 1.1rem; margin-bottom: 1rem; }
 .how-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.how-step {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 1rem;
-}
+.how-step { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
 .how-step .n { font-size: 1.4rem; font-family: var(--serif); color: var(--hint); margin-bottom: .4rem; }
 .how-step .t { font-size: .85rem; font-weight: 500; margin-bottom: .25rem; }
 .how-step .d { font-size: .78rem; color: var(--muted); line-height: 1.5; }
@@ -354,7 +319,6 @@ a { color: inherit; }
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="site-header">
   <div class="container">
     <div class="logo-mark">📚</div>
@@ -365,7 +329,6 @@ a { color: inherit; }
   </div>
 </header>
 
-<!-- STEPS BAR -->
 <nav class="steps-bar" aria-label="Progress">
   <div class="steps-inner">
     <div class="step-item active" id="step1-indicator">
@@ -397,7 +360,7 @@ a { color: inherit; }
       <div class="how-step">
         <div class="n">02</div>
         <div class="t">Find your library</div>
-        <div class="d">Type your city or library name — we'll find your Libby catalog automatically.</div>
+        <div class="d">Type your zip code or library name — we'll find your Libby catalog automatically.</div>
       </div>
       <div class="how-step">
         <div class="n">03</div>
@@ -440,53 +403,29 @@ a { color: inherit; }
   <div class="panel" id="panel-library" style="opacity:.45;pointer-events:none;">
     <div class="panel-title">
       <div class="step-badge">2</div>
-      Enter your library key
+      Find your library
     </div>
+    <p class="panel-desc">Search by zip code, city, or library name to find your Libby catalog.</p>
 
-    <div class="callout">
-      <strong>How to find your library key (30 seconds):</strong>
-      <ol>
-        <li>Open <a href="https://libbyapp.com" target="_blank">libbyapp.com</a> in a new tab</li>
-        <li>Click <strong>Add a library</strong> and search for your library by name or zip code</li>
-        <li>Once you see your library, look at the browser URL — it will say something like:<br>
-            <code style="background:var(--paper);padding:2px 6px;border-radius:4px;font-size:.85em">libbyapp.com/library/<strong>dclibrary</strong></code></li>
-        <li>Copy just that last part (e.g. <strong>dclibrary</strong>) and paste it below</li>
-      </ol>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="lib-search-input"
+        placeholder="Zip code, city, or library name…"
+        autocomplete="off" spellcheck="false">
+      <span class="search-spinner" id="search-spinner"><span class="spinner"></span></span>
     </div>
+    <div class="lib-results" id="lib-results"></div>
 
-    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-      <div style="flex:1;min-width:180px;">
-        <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px;">Library key</label>
-        <div class="search-wrap" style="margin-bottom:0;">
-          <span class="search-icon">🔑</span>
-          <input type="text" id="lib-key-input"
-            placeholder="e.g. dclibrary, nypl, lapl…"
-            autocomplete="off" spellcheck="false"
-            oninput="onLibKeyInput(this.value)">
-        </div>
-      </div>
-      <div style="flex:2;min-width:200px;">
-        <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px;">Library name <span style="font-weight:300">(optional — just for display)</span></label>
-        <input type="text" id="lib-name-input"
-          placeholder="e.g. DC Public Library"
-          autocomplete="off"
-          oninput="onLibNameInput()"
-          style="width:100%;padding:.58rem 1rem;border:1.5px solid var(--border);border-radius:8px;font-family:var(--sans);font-size:.9rem;background:var(--paper);outline:none;transition:border-color .15s;"
-          onfocus="this.style.borderColor='var(--ink)'"
-          onblur="this.style.borderColor='var(--border)'">
-      </div>
-    </div>
-
-    <div class="lib-selected" id="lib-selected" style="margin-top:.85rem;">
+    <div class="lib-selected" id="lib-selected">
       <span>✓</span>
       <div>
         <div id="lib-selected-name" style="font-weight:500;"></div>
-        <div id="lib-selected-loc" style="font-size:.75rem;margin-top:1px;opacity:.75;"></div>
+        <div id="lib-selected-loc"  style="font-size:.75rem;margin-top:1px;opacity:.75;"></div>
       </div>
-      <button onclick="clearLibrary()">Clear</button>
+      <button onclick="clearLibrary()">Change</button>
     </div>
 
-        <div class="format-label" style="margin-top:1rem;">I'm interested in:</div>
+    <div class="format-label" style="margin-top:1.1rem;">I'm interested in:</div>
     <div class="format-chips">
       <div class="format-chip selected" data-format="ebook">📖 eBooks</div>
       <div class="format-chip selected" data-format="audiobook">🎧 Audiobooks</div>
@@ -507,12 +446,9 @@ a { color: inherit; }
   <!-- RESULTS -->
   <div id="results-section">
     <div class="stats-grid" id="stats-grid"></div>
-
     <div class="filter-row" id="filter-row"></div>
-
     <div class="book-grid" id="book-grid"></div>
     <div class="empty-msg" id="empty-msg" style="display:none">No books match that filter.</div>
-
     <div style="margin-top:1.5rem;">
       <button class="run-btn" style="background:var(--paper);color:var(--ink);border:1px solid var(--border);" onclick="resetAll()">
         ← Start over with a new CSV
@@ -531,33 +467,531 @@ a { color: inherit; }
 <script>
 // ── State ──
 let parsedBooks   = { needsLibrary: [], alreadyOwned: [] };
-let selectedLib   = null;
+let selectedLib   = null;   // { key, name, address }
 let searchResults = [];
 let activeFilter  = 'all';
-
-// ── LIBRARY KEY INPUT ──
-function onLibKeyInput(val) {
-  const key = val.trim().toLowerCase().replace(/[^a-z0-9\-]/g, '');
-  if (key.length < 2) {
-    document.getElementById('lib-selected').classList.remove('show');
-  try { document.getElementById('lib-key-input').value  = ''; } catch(e) {}
-  try { document.getElementById('lib-name-input').value = ''; } catch(e) {}
-  document.getElementById('panel-library').style.opacity = '.45';
-  document.getElementById('panel-library').style.pointerEvents = 'none';
-  document.getElementById('run-btn').style.display = '';
-  document.getElementById('run-btn').disabled = true;
-  document.getElementById('results-section').classList.remove('show');
-  document.getElementById('how-section').style.display = '';
-  document.querySelectorAll('.step-item').forEach((s,i) => {
-    s.classList.remove('done');
-    if (i===0) s.classList.add('active'); else s.classList.remove('active');
-  });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+let libSearchTimer = null;
 
 // ── UTILS ──
-function escHtml(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function escAttr(s)  { return String(s||'').replace(/"/g,'&quot;'); }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s||'').replace(/"/g,'&quot;'); }
+
+function setStep(n) {
+  document.querySelectorAll('.step-item').forEach((el, i) => {
+    el.classList.remove('active','done');
+    if (i < n-1)  el.classList.add('done');
+    if (i === n-1) el.classList.add('active');
+  });
+}
+
+// ── SPINE COLORS ──
+const SPINE_COLORS = [
+  ['#e8d5b7','#5c3d1e'],['#d4e8d5','#1e5c2e'],['#d5dde8','#1e3a5c'],
+  ['#e8d5e0','#5c1e3a'],['#e8e5d5','#4a4020'],['#d5e8e5','#1e4a46'],
+];
+function spineColor(title) {
+  let h = 0;
+  for (let i = 0; i < (title||'').length; i++) h = (h * 31 + title.charCodeAt(i)) & 0xffffffff;
+  return SPINE_COLORS[Math.abs(h) % SPINE_COLORS.length];
+}
+
+// ── CSV PARSING ──
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/);
+  if (!lines.length) return;
+
+  // Find header row
+  const headerIdx = lines.findIndex(l => l.toLowerCase().includes('title') && l.toLowerCase().includes('author'));
+  if (headerIdx < 0) { alert('Could not find a header row in the CSV. Make sure you exported from StoryGraph.'); return; }
+
+  const headers = parseCSVRow(lines[headerIdx]).map(h => h.trim().toLowerCase());
+  const col = name => headers.indexOf(name);
+
+  const iTitle    = col('title');
+  const iAuthor   = col('author');
+  const iStatus   = col('read status');
+  const iOwned    = col('owned');
+
+  if (iTitle < 0 || iAuthor < 0) { alert('CSV is missing Title or Author columns.'); return; }
+
+  const tbr = [], owned = [];
+
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const row = parseCSVRow(line);
+    const title  = (row[iTitle]  || '').trim();
+    const author = (row[iAuthor] || '').trim();
+    const status = (row[iStatus] || '').trim().toLowerCase();
+    const isOwned = iOwned >= 0 && (row[iOwned] || '').trim().toLowerCase() === 'true';
+
+    if (!title) continue;
+
+    const book = { title, author };
+
+    if (isOwned) {
+      owned.push(book);
+    } else if (status === 'to-read' || status === 'tbr' || status === '') {
+      tbr.push(book);
+    }
+  }
+
+  if (tbr.length === 0 && owned.length === 0) {
+    alert('No to-read books found in the CSV. Check that your export includes the "Read Status" column.');
+    return;
+  }
+
+  parsedBooks = { needsLibrary: tbr, alreadyOwned: owned };
+
+  document.getElementById('upload-msg').textContent =
+    `${tbr.length} to-read book${tbr.length !== 1 ? 's' : ''} found` +
+    (owned.length ? ` · ${owned.length} already owned` : '');
+  document.getElementById('upload-success').classList.add('show');
+
+  // Unlock step 2
+  const panel = document.getElementById('panel-library');
+  panel.style.opacity = '1';
+  panel.style.pointerEvents = '';
+  setStep(2);
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('lib-search-input').focus(), 400);
+}
+
+function parseCSVRow(line) {
+  const result = [];
+  let cur = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      result.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── FILE UPLOAD & DRAG-DROP ──
+document.getElementById('csv-file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) readFile(file);
+});
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => parseCSV(e.target.result);
+  reader.readAsText(file);
+}
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+});
+
+// ── LIBRARY SEARCH via locate.libbyapp.com ──
+const libInput   = document.getElementById('lib-search-input');
+const libResults = document.getElementById('lib-results');
+const libSpinner = document.getElementById('search-spinner');
+
+libInput.addEventListener('input', () => {
+  clearTimeout(libSearchTimer);
+  const q = libInput.value.trim();
+  if (q.length < 2) { hideResults(); return; }
+  libSearchTimer = setTimeout(() => fetchLibraries(q), 350);
+});
+
+libInput.addEventListener('keydown', e => {
+  const items = libResults.querySelectorAll('.lib-result-item');
+  const focused = libResults.querySelector('.lib-result-item.focused');
+  const idx = focused ? Array.from(items).indexOf(focused) : -1;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    const next = items[idx + 1] || items[0];
+    if (next) { if (focused) focused.classList.remove('focused'); next.classList.add('focused'); next.scrollIntoView({ block:'nearest' }); }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    const prev = items[idx - 1] || items[items.length - 1];
+    if (prev) { if (focused) focused.classList.remove('focused'); prev.classList.add('focused'); prev.scrollIntoView({ block:'nearest' }); }
+  } else if (e.key === 'Enter' && focused) {
+    e.preventDefault();
+    focused.click();
+  } else if (e.key === 'Escape') {
+    hideResults();
+  }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#lib-search-input') && !e.target.closest('#lib-results')) hideResults();
+});
+
+async function fetchLibraries(query) {
+  libSpinner.classList.add('show');
+  libResults.classList.remove('show');
+  try {
+    const res = await fetch(`https://locate.libbyapp.com/autocomplete/${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    renderLibResults(data.branches || []);
+  } catch(err) {
+    libResults.innerHTML = `<div class="lib-no-results">Search unavailable — try entering your library key manually below.</div>`;
+    libResults.classList.add('show');
+  } finally {
+    libSpinner.classList.remove('show');
+  }
+}
+
+function renderLibResults(branches) {
+  if (!branches.length) {
+    libResults.innerHTML = `<div class="lib-no-results">No libraries found. Try a different zip code or name.</div>`;
+    libResults.classList.add('show');
+    return;
+  }
+
+  // Deduplicate by preferredKey (same system, multiple branches)
+  const seen = new Set();
+  const unique = branches.filter(b => {
+    const k = b.preferredKey || b.websiteId || b.id;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+
+  libResults.innerHTML = unique.map((b, i) => {
+    const key = b.preferredKey || b.slug || b.websiteId || b.id;
+    const name = escHtml(b.name || b.systemName || 'Unknown Library');
+    const addr = escHtml(b.address || b.city || '');
+    return `<div class="lib-result-item" data-key="${escAttr(String(key))}" data-name="${escAttr(b.name || b.systemName || '')}" data-addr="${escAttr(b.address || b.city || '')}" onclick="selectLibrary(this)">
+      <div class="lib-name">${name}</div>
+      ${addr ? `<div class="lib-location">${addr}</div>` : ''}
+    </div>`;
+  }).join('');
+  libResults.classList.add('show');
+}
+
+function selectLibrary(el) {
+  const key  = el.dataset.key;
+  const name = el.dataset.name;
+  const addr = el.dataset.addr;
+
+  selectedLib = { key, name, address: addr };
+
+  libInput.value = name;
+  hideResults();
+
+  document.getElementById('lib-selected-name').textContent = name;
+  document.getElementById('lib-selected-loc').textContent  = addr;
+  document.getElementById('lib-selected').classList.add('show');
+
+  checkRunReady();
+}
+
+function clearLibrary() {
+  selectedLib = null;
+  libInput.value = '';
+  document.getElementById('lib-selected').classList.remove('show');
+  document.getElementById('run-btn').disabled = true;
+  libInput.focus();
+}
+
+function hideResults() {
+  libResults.classList.remove('show');
+  libResults.innerHTML = '';
+}
+
+// ── FORMAT CHIPS ──
+document.querySelectorAll('.format-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.classList.toggle('selected');
+    checkRunReady();
+  });
+});
+
+function getFormats() {
+  return Array.from(document.querySelectorAll('.format-chip.selected')).map(c => c.dataset.format);
+}
+
+function checkRunReady() {
+  const ready = selectedLib && getFormats().length > 0;
+  document.getElementById('run-btn').disabled = !ready;
+}
+
+// ── OVERDRIVE SEARCH ──
+async function runSearch() {
+  if (!selectedLib) return;
+  const formats = getFormats();
+  if (!formats.length) return;
+
+  const books = parsedBooks.needsLibrary;
+  if (!books.length) { alert('No books to search!'); return; }
+
+  // UI: show progress
+  document.getElementById('run-btn').style.display = 'none';
+  document.getElementById('results-section').classList.remove('show');
+  const pw    = document.getElementById('progress-wrap');
+  const pbar  = document.getElementById('progress-bar');
+  const plbl  = document.getElementById('progress-label');
+  pw.classList.add('show');
+
+  searchResults = [];
+  const libKey = selectedLib.key;
+
+  // Determine if key is numeric (websiteId) or slug
+  const isNumericKey = /^\d+$/.test(String(libKey));
+
+  for (let i = 0; i < books.length; i++) {
+    const book = books[i];
+    const pct  = Math.round((i / books.length) * 100);
+    pbar.style.width = pct + '%';
+    plbl.textContent = `Searching ${i+1} of ${books.length}: "${book.title}"`;
+
+    const result = await searchBook(book, libKey, isNumericKey, formats);
+    searchResults.push(result);
+
+    // Throttle to avoid rate limits
+    await sleep(120);
+  }
+
+  pbar.style.width = '100%';
+  plbl.textContent = 'Done!';
+  await sleep(400);
+
+  pw.classList.remove('show');
+  document.getElementById('run-btn').style.display = '';
+  setStep(3);
+  renderResults();
+}
+
+async function searchBook(book, libKey, isNumericKey, formats) {
+  const base = { ...book, status: 'missing', formats: [] };
+
+  for (const fmt of formats) {
+    try {
+      const fmtParam = fmt === 'ebook' ? 'ebook-epub-adobe,ebook-kindle,ebook-epub-open' : 'audiobook-mp3,audiobook-overdrive';
+
+      let url;
+      if (isNumericKey) {
+        url = `https://thunder.api.overdrive.com/v2/libraries/${libKey}/media?query=${encodeURIComponent(book.title)}&format=${encodeURIComponent(fmtParam)}&limit=5`;
+      } else {
+        url = `https://thunder.api.overdrive.com/v2/libraries/${libKey}/media?query=${encodeURIComponent(book.title)}&format=${encodeURIComponent(fmtParam)}&limit=5`;
+      }
+
+      const res  = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const items = data.items || [];
+
+      // Find best title match
+      const titleLower = book.title.toLowerCase();
+      const authorLower = book.author.toLowerCase().split(',')[0].trim();
+      const match = items.find(item => {
+        const t = (item.title || '').toLowerCase();
+        const a = (item.firstCreatorName || '').toLowerCase();
+        return t.includes(titleLower.substring(0, 20)) || titleLower.includes(t.substring(0, 20));
+      }) || items[0];
+
+      if (!match) continue;
+
+      // Author cross-check (soft)
+      const matchAuthor = (match.firstCreatorName || '').toLowerCase();
+      if (authorLower && matchAuthor && !matchAuthor.includes(authorLower.split(' ').pop()) && !authorLower.includes(matchAuthor.split(' ').pop())) {
+        continue; // Different book entirely
+      }
+
+      const avail = match.isAvailable;
+      const holds = match.holdsCount || 0;
+      const copies = match.copiesCount || 0;
+      const coverId = match.coverImageId || match.id;
+      const mediaId = match.id;
+
+      base.mediaId  = base.mediaId  || mediaId;
+      base.coverId  = base.coverId  || coverId;
+      base.coverUrl = base.coverUrl || (coverId ? `https://img1.od-cdn.com/ImageType-100/0293-1/{${coverId}}/{00/00/00}Img100.jpg` : null);
+      // Simpler cover URL format
+      if (coverId) base.coverUrl = `https://img1.od-cdn.com/ImageType-200/1523-1/%7B${coverId}%7D/Image200.jpg`;
+
+      base.formats.push({ fmt, avail, holds, copies, mediaId });
+
+      if (avail) base.status = 'available';
+      else if (base.status !== 'available') base.status = 'hold';
+
+    } catch(e) { /* skip on error */ }
+  }
+
+  return base;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── RENDER RESULTS ──
+function renderResults() {
+  document.getElementById('how-section').style.display = 'none';
+  document.getElementById('results-section').classList.add('show');
+
+  const avail  = searchResults.filter(b => b.status === 'available');
+  const holds  = searchResults.filter(b => b.status === 'hold');
+  const miss   = searchResults.filter(b => b.status === 'missing');
+  const owned  = parsedBooks.alreadyOwned;
+
+  // Stats
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card avail"><div class="num">${avail.length}</div><div class="lbl">Borrow now</div></div>
+    <div class="stat-card hold"><div class="num">${holds.length}</div><div class="lbl">Place hold</div></div>
+    <div class="stat-card miss"><div class="num">${miss.length}</div><div class="lbl">Not in catalog</div></div>
+    <div class="stat-card owned"><div class="num">${owned.length}</div><div class="lbl">Already owned</div></div>
+  `;
+
+  // Filter buttons
+  activeFilter = 'all';
+  document.getElementById('filter-row').innerHTML = `
+    <button class="filter-btn on" data-f="all"    onclick="setFilter('all',this)">All <span class="ct">${searchResults.length}</span></button>
+    <button class="filter-btn"    data-f="available" onclick="setFilter('available',this)">Borrow now <span class="ct">${avail.length}</span></button>
+    <button class="filter-btn"    data-f="hold"   onclick="setFilter('hold',this)">Hold <span class="ct">${holds.length}</span></button>
+    <button class="filter-btn"    data-f="missing" onclick="setFilter('missing',this)">Not found <span class="ct">${miss.length}</span></button>
+    <button class="filter-btn"    data-f="owned"  onclick="setFilter('owned',this)">Owned <span class="ct">${owned.length}</span></button>
+    <input  id="book-search" placeholder="Search titles…" oninput="filterByText(this.value)">
+  `;
+
+  renderCards('all');
+  document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('book-search').value = '';
+  renderCards(f);
+}
+
+function filterByText(q) {
+  const lower = q.toLowerCase();
+  document.querySelectorAll('.book-card').forEach(card => {
+    const matches = card.dataset.title.toLowerCase().includes(lower) || card.dataset.author.toLowerCase().includes(lower);
+    card.classList.toggle('hidden', !matches);
+  });
+  document.getElementById('empty-msg').style.display =
+    document.querySelectorAll('.book-card:not(.hidden)').length === 0 ? '' : 'none';
+}
+
+function renderCards(filter) {
+  const libKey = selectedLib.key;
+  const isNumericKey = /^\d+$/.test(String(libKey));
+  const grid = document.getElementById('book-grid');
+  grid.innerHTML = '';
+
+  let items = [];
+  if (filter === 'owned') {
+    items = parsedBooks.alreadyOwned.map(b => ({ ...b, status: 'owned', formats: [] }));
+  } else {
+    items = filter === 'all' ? searchResults : searchResults.filter(b => b.status === filter);
+  }
+
+  if (!items.length) {
+    document.getElementById('empty-msg').style.display = '';
+    return;
+  }
+  document.getElementById('empty-msg').style.display = 'none';
+
+  items.forEach((book, idx) => {
+    const [bg, fg] = spineColor(book.title);
+    const initials = (book.title || '').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+
+    const coverHtml = book.coverUrl
+      ? `<img src="${escAttr(book.coverUrl)}" alt="" onerror="this.style.display='none';this.parentNode.style.background='${bg}';this.parentNode.style.color='${fg}';this.parentNode.textContent='${initials}'">`
+      : ``;
+    const spineStyle = book.coverUrl ? '' : `background:${bg};color:${fg};`;
+
+    let tagHtml = '', actionHtml = '';
+    if (book.status === 'available') {
+      tagHtml = `<span class="tag t-avail">✓ Available</span>`;
+      book.formats.forEach(f => {
+        if (f.avail) {
+          const label = f.fmt === 'ebook' ? '📖 eBook' : '🎧 Audiobook';
+          tagHtml += `<span class="tag t-fmt">${label}</span>`;
+          const link = isNumericKey
+            ? `https://libbyapp.com/search/${libKey}/search/query-${encodeURIComponent(book.title)}`
+            : `https://libbyapp.com/library/${libKey}/search/query-${encodeURIComponent(book.title)}`;
+          actionHtml += `<a class="btn-borrow" href="${escAttr(link)}" target="_blank">Borrow ${f.fmt === 'ebook' ? 'eBook' : 'audiobook'}</a> `;
+        }
+      });
+    } else if (book.status === 'hold') {
+      tagHtml = `<span class="tag t-hold">⏳ Hold available</span>`;
+      book.formats.forEach(f => {
+        const label = f.fmt === 'ebook' ? '📖 eBook' : '🎧 Audiobook';
+        tagHtml += `<span class="tag t-fmt">${label}</span>`;
+        const link = isNumericKey
+          ? `https://libbyapp.com/search/${libKey}/search/query-${encodeURIComponent(book.title)}`
+          : `https://libbyapp.com/library/${libKey}/search/query-${encodeURIComponent(book.title)}`;
+        const holdsInfo = f.holds ? `${f.holds} hold${f.holds!==1?'s':''}` : '';
+        actionHtml += `<a class="btn-hold" href="${escAttr(link)}" target="_blank">Place hold</a> `;
+        if (holdsInfo) actionHtml += `<div class="hold-detail">${holdsInfo} · ${f.copies} cop${f.copies!==1?'ies':'y'}</div>`;
+      });
+    } else if (book.status === 'missing') {
+      tagHtml = `<span class="tag t-miss">Not in catalog</span>`;
+      const wcLink = `https://www.worldcat.org/search?q=${encodeURIComponent(book.title + ' ' + book.author)}`;
+      actionHtml = `<a class="btn-wc" href="${escAttr(wcLink)}" target="_blank">Find elsewhere</a>`;
+    } else if (book.status === 'owned') {
+      tagHtml = `<span class="tag t-owned">✓ You own this</span>`;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.dataset.title  = book.title;
+    card.dataset.author = book.author;
+    card.style.animationDelay = (idx * 0.03) + 's';
+    card.innerHTML = `
+      <div class="spine" style="${spineStyle}">${coverHtml || initials}</div>
+      <div class="bk-info">
+        <div class="bk-title">${escHtml(book.title)}</div>
+        <div class="bk-author">${escHtml(book.author)}</div>
+        <div class="bk-tags">${tagHtml}</div>
+        <div class="bk-action">${actionHtml}</div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ── RESET ──
+function resetAll() {
+  parsedBooks   = { needsLibrary: [], alreadyOwned: [] };
+  selectedLib   = null;
+  searchResults = [];
+  activeFilter  = 'all';
+
+  document.getElementById('upload-success').classList.remove('show');
+  document.getElementById('upload-msg').textContent = '';
+  document.getElementById('csv-file').value = '';
+
+  libInput.value = '';
+  hideResults();
+  document.getElementById('lib-selected').classList.remove('show');
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('run-btn').style.display = '';
+  document.getElementById('progress-wrap').classList.remove('show');
+
+  const panel = document.getElementById('panel-library');
+  panel.style.opacity = '.45';
+  panel.style.pointerEvents = 'none';
+
+  document.getElementById('results-section').classList.remove('show');
+  document.getElementById('how-section').style.display = '';
+  document.getElementById('stats-grid').innerHTML = '';
+  document.getElementById('filter-row').innerHTML = '';
+  document.getElementById('book-grid').innerHTML = '';
+
+  setStep(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 </script>
 </body>
 </html>
