@@ -834,16 +834,23 @@ async function searchBook(book, libKey, formats) {
     const url = `https://thunder.api.overdrive.com/v2/libraries/${encodeURIComponent(libKey)}/media?` +
       `query=${encodeURIComponent(query)}&perPage=5&page=1&format=${encodeURIComponent(allFormats)}&sort=relevance`;
 
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; TBRonLibby/1.0)',
-        'Accept': 'application/json'
-      }
-    });
-    if (!res.ok) return base;
+    const res = await fetch(url);  // no custom headers — browsers block User-Agent and trigger CORS preflight
+    if (!res.ok) {
+      console.error('[TBR] HTTP', res.status, 'for', book.title, '— URL:', url);
+      window.__tbrLastError = `HTTP ${res.status}`;
+      return base;
+    }
     const data = await res.json();
     const items = data.items || [];
-    if (!items.length) return base;
+    if (!items.length) {
+      console.warn('[TBR] No items for:', book.title, '(searched:', query, ')');
+      return base;
+    }
+    // Log the first successful hit's full structure ONCE so we can verify field names
+    if (!window.__tbrLoggedItem) {
+      window.__tbrLoggedItem = true;
+      console.log('[TBR] First matched item full structure:', JSON.stringify(items[0], null, 2));
+    }
 
     // Find best match — prefer title substring match (same as Python)
     const titleLower = book.title.toLowerCase();
@@ -895,7 +902,10 @@ async function searchBook(book, libKey, formats) {
       base.status = 'hold';
     }
 
-  } catch(e) { /* network error — leave as missing */ }
+  } catch(e) {
+    console.error('[TBR] Fetch failed for:', book.title, '—', e.message);
+    window.__tbrLastError = e.message;
+  }
 
   return base;
 }
