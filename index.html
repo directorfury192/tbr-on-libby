@@ -875,32 +875,63 @@ async function searchBook(book, libKey, formats) {
       console.log('[TBR] First matched item full structure:', JSON.stringify(items[0], null, 2));
     }
 
-    // Find best match — prefer title substring match (same as Python)
-    const titleLower = book.title.toLowerCase();
-    let match = items.find(item => titleLower.includes((item.title||'').toLowerCase().substring(0,20))
-                                || (item.title||'').toLowerCase().includes(titleLower.substring(0,20)));
-    if (!match) match = items[0];
+    // Availability fields are at the TOP LEVEL of each item — confirmed from API response.
+    // (not nested in item.availability — that object doesn't exist in this API)
+    function itemAvail(item) {
+      return {
+        isAvailable: item.isAvailable || item.isAlwaysAvailable || false,
+        copiesOwned: item.ownedCopies  || 0,
+        copiesAvail: item.availableCopies || 0,
+        holds:       item.holdsCount   || 0,
+        waitDays:    item.estimatedWaitDays || 0,
+      };
+    }
+    function itemScore(item) {
+      const a = itemAvail(item);
+      if (a.isAvailable || a.copiesAvail > 0) return 2; // borrowable now
+      if (a.copiesOwned > 0)                  return 1; // on hold queue
+      return 0;
+    }
 
-    // ── Availability — nested "availability" object (confirmed from Python script) ──
-    const avail       = match.availability || {};
-    const isAvailable = avail.isAvailable || avail.isAlwaysAvailable || false;
-    const copiesOwned = avail.copiesOwned  || avail.ownedCopies      || 0;
-    const copiesAvail = avail.copiesAvailable || avail.availableCopies || 0;
-    const holds       = avail.numberOfHolds   || avail.holdsCount      || 0;
-
-    // ── Format label ──
-    const fmts = (match.formats || []).map(f => f.id || f.name || '');
-    const hasEbook = fmts.some(f => f.includes('ebook') || f.includes('epub'));
-    const hasAudio = fmts.some(f => f.includes('audiobook') || f.includes('audio'));
-    const formatLabel = hasEbook && hasAudio ? 'eBook + Audiobook' : hasAudio ? 'Audiobook' : 'eBook';
-
-    // Only include formats the user asked for
+    // Format preference (move before candidate filter so we can filter by it)
     const wantsEbook = formats.includes('ebook');
     const wantsAudio = formats.includes('audiobook');
-    if (!wantsEbook && hasEbook && !hasAudio) return base;
-    if (!wantsAudio && hasAudio && !hasEbook) return base;
 
-    // ── Cover — use covers.cover300Wide.href (confirmed from Python) ──
+    // Find ALL title-matching items, filtered to the user's chosen formats,
+    // then pick the one with the best status.
+    const titleLower = book.title.toLowerCase();
+    const candidates = items.filter(item => {
+      const t = (item.title || '').toLowerCase();
+      if (!t.includes(titleLower.substring(0, 20)) && !titleLower.includes(t.substring(0, 20))) return false;
+      // item.type.id is "ebook" or "audiobook" — use it for format filtering
+      const isEbook = (item.type?.id || '').includes('ebook');
+      const isAudio = (item.type?.id || '').includes('audiobook');
+      if (!wantsEbook && isEbook) return false;
+      if (!wantsAudio && isAudio) return false;
+      return true;
+    });
+    // Fall back to title-only match if format filter removed everything
+    if (!candidates.length) {
+      const byTitle = items.filter(item => {
+        const t = (item.title || '').toLowerCase();
+        return t.includes(titleLower.substring(0, 20)) || titleLower.includes(t.substring(0, 20));
+      });
+      candidates.push(...(byTitle.length ? byTitle : [items[0]]));
+    }
+
+    // Best-status wins; ties keep the earlier (more relevant) result
+    const match = candidates.reduce((best, c) => itemScore(c) > itemScore(best) ? c : best, candidates[0]);
+
+    const avail       = itemAvail(match);
+    const isAvailable = avail.isAvailable;
+    const copiesOwned = avail.copiesOwned;
+    const copiesAvail = avail.copiesAvail;
+    const holds       = avail.holds;
+
+    // Format label from item.type.id (authoritative, no need to scan formats[])
+    const formatLabel = (match.type?.id || '').includes('audiobook') ? 'Audiobook' : 'eBook';
+
+    // ── Cover ──
     const covers   = match.covers || {};
     const coverUrl = (covers.cover300Wide && covers.cover300Wide.href)
                   || (covers.cover150Wide && covers.cover150Wide.href)
@@ -914,15 +945,15 @@ async function searchBook(book, libKey, formats) {
     base.copiesAvail = copiesAvail;
     base.odTitle     = match.title  || book.title;
     base.odAuthor    = (match.creators || []).map(c => c.name).join(', ') || book.author;
+    base.odId        = match.id || null;
 
-    // ── Status — same logic as Python ──
+    // ── Status ──
     if (isAvailable || copiesAvail > 0) {
       base.status = 'available';
     } else if (copiesOwned > 0) {
       base.status = 'hold';
     } else {
-      // In catalog but 0 copies — still holdable
-      base.status = 'hold';
+      base.status = 'hold'; // in catalog, 0 copies — still holdable
     }
 
   } catch(e) {
