@@ -9,12 +9,14 @@ Check your [StoryGraph](https://app.thestorygraph.com) to-read list against your
 ## What it does
 
 1. You export your StoryGraph library as a CSV
-2. You type your library's name or zip code
+2. You type your library's name, city, or zip code and select it from the dropdown
 3. The app checks every book on your to-read list against your library's digital catalog
-4. Results sort into: **Borrow now**, **Place hold**, **Not in catalog**, and **Already owned**
-5. Each available book links directly into Libby so you can borrow or hold with one click
+4. Results are shown as individual format editions — eBooks and audiobooks appear as separate cards, each with its own availability status and direct Libby link
+5. Filter by availability (Borrow now / Hold / Not found / Owned) and by format (eBooks, audiobooks, or both)
+6. Click any result to open that specific edition directly in Libby
+7. Save your results as a CSV for later reference
 
-Books you already own (marked "Owned" in StoryGraph) are automatically filtered out of the search.
+Books you already own (marked "Owned" in StoryGraph) are automatically filtered out of the search. Because one book can have both an ebook and an audiobook edition, the result count may exceed your TBR count — a summary above the results explains the breakdown.
 
 ---
 
@@ -29,11 +31,11 @@ Books you already own (marked "Owned" in StoryGraph) are automatically filtered 
 ### Step 2 — Upload and search
 1. Open the app and drag your CSV onto the upload zone (or click Browse)
 2. Type your library's name, city, or zip code and select it from the dropdown
-3. Choose eBooks, audiobooks, or both
+3. Choose eBooks, audiobooks, or both — only selected formats will appear in results
 4. Click **Search my library catalog**
 
-### Step 3 — Browse results
-Filter by availability tab, search by title, and click any result to open it in Libby.
+### Step 3 — Browse and save results
+Filter by availability tab, search by title, and click any result card to open that edition directly in Libby. Use **Save results as CSV** to download the full results for offline reference.
 
 ---
 
@@ -41,22 +43,11 @@ Filter by availability tab, search by title, and click any result to open it in 
 
 This is a single `index.html` file that runs entirely in the browser — no backend, no account, nothing stored.
 
-**Library lookup** uses the `locate.libbyapp.com/autocomplete` endpoint, which is publicly CORS-open and works as a direct browser call.
+**Library lookup** uses the `locate.libbyapp.com/autocomplete` endpoint, which is CORS-open and works as a direct browser call. The correct library key for API calls is extracted from the `DigitalLibraryUrl` link in the system object returned by that endpoint (e.g. `mcplmd.overdrive.com` → key `mcplmd`). This key differs from the internal `fulfillmentId` field and works for both the book search API and Libby deep links.
 
-**Book availability** uses the OverDrive Thunder API (`thunder.api.overdrive.com/v2/libraries/{key}/media`). This is the same API the Libby web app uses internally. Because it only allows browser requests from Libby's own origin, a small Cloudflare Worker (`worker.js`) is used as a CORS proxy — it forwards the request server-side and adds the missing `Access-Control-Allow-Origin` header.
+**Book availability** uses the OverDrive Thunder API (`thunder.api.overdrive.com/v2/libraries/{key}/media`), which returns `Access-Control-Allow-Origin: *` and can be called directly from the browser with no proxy needed. Each search returns up to 20 results; all title-matching editions are returned as separate result cards so that ebook and audiobook availability are shown independently.
 
-### CORS proxy setup (required for forking)
-
-If you fork this project you'll need to deploy your own proxy:
-
-1. Create a free [Cloudflare](https://cloudflare.com) account
-2. Go to **Workers & Pages** → **Create Worker** → paste `worker.js` → **Deploy**
-3. Copy your `*.workers.dev` URL
-4. In `index.html`, set `const PROXY_BASE = 'YOUR_URL'` near the top of the `<script>` block
-
-### Current known issue
-
-Book availability search is returning no results even with the CORS proxy in place. The proxy is deployed and the Thunder API call is being routed through it, but results come back empty. The root cause is under investigation — most likely either an authentication requirement, an unexpected response shape, or a library key format mismatch. A working Python reference implementation (`tbr_libby.py`) is included in the repo for comparison.
+**Libby deep links** use the format `libbyapp.com/search/{key}/search/query-{title}/page-1/{contentId}`, pointing directly to the specific edition in the user's library catalog.
 
 ---
 
@@ -65,15 +56,16 @@ Book availability search is returning no results even with the CORS proxy in pla
 | File | Purpose |
 |---|---|
 | `index.html` | The entire app — HTML, CSS, and JS in one file |
-| `worker.js` | Cloudflare Worker CORS proxy for the Thunder API |
-| `tbr_libby.py` | Python reference script — works correctly, used for debugging |
-| `README-PROXY.md` | Step-by-step proxy deployment guide |
+| `tbr_libby.py` | Python reference script used during development and debugging |
 
 ---
 
-## Stack
+## Research & prior art
 
-- Vanilla HTML / CSS / JS — no frameworks or build step
-- Hosted on GitHub Pages
-- CORS proxy via Cloudflare Workers (free tier)
-- Data sources: StoryGraph CSV export + OverDrive Thunder API
+[Libby Multi-Library Search](https://libbysearch.com) (libbysearch.com) was a key reference during development. Inspecting its network traffic was instrumental in identifying the correct Thunder API URL format, the `DigitalLibraryUrl` field as the source of library keys, and the Libby deep link structure with content IDs.
+
+---
+
+## License
+
+MIT — free to use, fork, and adapt.
