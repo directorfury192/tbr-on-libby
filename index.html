@@ -691,19 +691,28 @@ function renderLibResults(branches) {
       for (const sys of sysList) {
         const sysId = sys.id || sys.websiteId;
         if (!systemMap.has(sysId)) {
-          // Try to extract the OverDrive catalog key from system links
-          // e.g. 'mcplmd' from 'https://mcplmd.overdrive.com/'
-          // This key works for both the Thunder API and Libby deep links.
-          const SKIP = new Set(['www','api','thunder','app','ebook','media','patron','dlr']);
-          const overDriveKey = (sys.links || []).reduce((found, link) => {
-            if (found) return found;
-            const url = (link.url || link.href || '').toLowerCase();
-            const m = url.match(/https?:\/\/([a-z0-9][a-z0-9-]*)\.overdrive\.com/);
-            return (m && !SKIP.has(m[1])) ? m[1] : null;
-          }, null);
+          // Extract the catalog key from the 'DigitalLibraryUrl' link in the system.
+          // Two URL formats in the wild:
+          //   '{key}.overdrive.com'     e.g. "mcplmd.overdrive.com"    → 'mcplmd'
+          //   'overdrive.{key}.{tld}'   e.g. "overdrive.dclibrary.org" → 'dclibrary'
+          function extractDigitalKey(links) {
+            const dl = (links || []).find(l => l.name === 'DigitalLibraryUrl');
+            if (!dl) return null;
+            const host = (dl.url || '').toLowerCase().trim()
+              .replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+            // Pattern 1: key.overdrive.com  (or key.lib.overdrive.com like fairfax.lib.overdrive.com)
+            const m1 = host.match(/^([a-z0-9][a-z0-9-]*)(?:\.[a-z0-9-]+)?\.overdrive\.com$/);
+            if (m1) return m1[1];
+            // Pattern 2: overdrive.key.tld  (e.g. overdrive.dclibrary.org)
+            const m2 = host.match(/^overdrive\.([a-z0-9][a-z0-9-]*)\.[a-z]+$/);
+            if (m2) return m2[1];
+            return null;
+          }
 
-          const key  = sys.preferredKey || sys.websiteKey || overDriveKey
-                    || sys.fulfillmentId || sys.slug || sys.key || String(sysId);
+          const catalogKey = extractDigitalKey(sys.links);
+          // Never use fulfillmentId — it differs from the catalog key.
+          const key  = catalogKey || sys.preferredKey || sys.websiteKey
+                    || sys.slug   || sys.key || String(sysId);
           const name = sys.name || sys.systemName || sys.fullName || 'Unknown Library';
           const addr = [b.city, b.regionCode].filter(Boolean).join(', ');
           systemMap.set(sysId, { key, name, addr });
@@ -905,7 +914,6 @@ async function searchBook(book, libKey, formats) {
     base.copiesAvail = copiesAvail;
     base.odTitle     = match.title  || book.title;
     base.odAuthor    = (match.creators || []).map(c => c.name).join(', ') || book.author;
-    base.odId        = match.id || null;  // OverDrive content ID for direct Libby links
 
     // ── Status — same logic as Python ──
     if (isAvailable || copiesAvail > 0) {
@@ -1012,12 +1020,9 @@ function renderCards(filter) {
       ? `<img src="${escAttr(book.coverUrl)}" alt="" loading="lazy" onerror="this.style.display='none';this.parentNode.style.background='${bg}';this.parentNode.style.color='${fg}';this.parentNode.textContent='${inits}'">`
       : ``;
 
-    // Libby deep-link — same format as Python
-    // Build Libby deep link using the format observed from libbysearch.com:
-    // https://libbyapp.com/search/{key}/search/query-{title}/page-1/{contentId}
-    // The key from extracting *.overdrive.com from system links should match Libby's expected key.
-    const libbyBase = `https://libbyapp.com/search/${encodeURIComponent(libKey)}/search/query-${encodeURIComponent(displayTitle)}/page-1`;
-    const libbyLink = book.odId ? `${libbyBase}/${book.odId}` : libbyBase;
+    // Libby deep-link — key is now the catalog slug (e.g. 'dclibrary', 'mcplmd')
+    // extracted from the DigitalLibraryUrl in the locate API response.
+    const libbyLink = `https://libbyapp.com/library/${encodeURIComponent(selectedLib.key)}/search/query-${encodeURIComponent(displayTitle)}/page-1`;
 
     let tagHtml = '', actionHtml = '';
 
