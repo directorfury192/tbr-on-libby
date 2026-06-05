@@ -692,8 +692,8 @@ function renderLibResults(branches) {
         const sysId = sys.id || sys.websiteId;
         if (!systemMap.has(sysId)) {
           // The system object holds the slug key and full name
-          const key  = sys.preferredKey || sys.websiteKey || sys.slug
-                    || sys.key          || String(sysId);
+          const key  = sys.preferredKey || sys.websiteKey || sys.fulfillmentId
+                    || sys.slug         || sys.key || String(sysId);
           const name = sys.name || sys.systemName || sys.fullName || 'Unknown Library';
           const addr = [b.city, b.regionCode].filter(Boolean).join(', ');
           systemMap.set(sysId, { key, name, addr });
