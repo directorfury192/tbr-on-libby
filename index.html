@@ -205,18 +205,7 @@ a { color: inherit; }
 /* ── results ── */
 #results-section { display: none; }
 #results-section.show { display: block; }
-
-.stats-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px; margin-bottom: 1.5rem;
-}
-.stat-card { border-radius: 8px; padding: .9rem 1rem; text-align: center; }
-.stat-card .num { font-size: 1.8rem; font-weight: 500; line-height: 1; }
-.stat-card .lbl { font-size: .72rem; margin-top: 4px; opacity: .8; }
-.stat-card.avail { background: var(--green-bg); color: var(--green); }
-.stat-card.hold  { background: var(--amber-bg); color: var(--amber); }
-.stat-card.miss  { background: var(--slate-bg); color: var(--slate); }
-.stat-card.owned { background: var(--teal-bg);  color: var(--teal);  }
+#search-summary { font-size:.8rem; color:var(--muted); padding:.5rem .25rem .25rem; line-height:1.5; }
 
 .filter-row {
   display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;
@@ -228,7 +217,6 @@ a { color: inherit; }
 }
 .filter-btn:hover { border-color: var(--ink); color: var(--ink); }
 .filter-btn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.filter-btn .ct { opacity: .65; margin-left: 3px; }
 #book-search {
   margin-left: auto; padding: 5px 13px; border-radius: 20px;
   border: 1px solid var(--border); background: var(--paper);
@@ -456,7 +444,7 @@ a { color: inherit; }
 
   <!-- RESULTS -->
   <div id="results-section">
-    <div class="stats-grid" id="stats-grid"></div>
+    <div id="search-summary"></div>
     <div class="filter-row" id="filter-row"></div>
     <div class="book-grid" id="book-grid"></div>
     <div class="empty-msg" id="empty-msg" style="display:none">No books match that filter.</div>
@@ -939,22 +927,39 @@ function renderResults() {
   const miss   = searchResults.filter(b => b.status === 'missing');
   const owned  = parsedBooks.alreadyOwned;
 
-  // Stats
-  document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card avail"><div class="num">${avail.length}</div><div class="lbl">Borrow now</div></div>
-    <div class="stat-card hold"><div class="num">${holds.length}</div><div class="lbl">Place hold</div></div>
-    <div class="stat-card miss"><div class="num">${miss.length}</div><div class="lbl">Not in catalog</div></div>
-    <div class="stat-card owned"><div class="num">${owned.length}</div><div class="lbl">Already owned</div></div>
-  `;
+  const totalSearched = parsedBooks.needsLibrary.length;
+  const totalEditions = avail.length + holds.length;
+
+  // Unique book counts for stat boxes — each book counted once by best status.
+  // "available" wins over "hold": a book with both an available audiobook and
+  // a held ebook counts as available (not hold).
+  const availTitles = new Set(avail.map(r => r.title.toLowerCase()));
+  const holdTitles  = new Set(holds.filter(r => !availTitles.has(r.title.toLowerCase())).map(r => r.title.toLowerCase()));
+  const missTitles  = new Set(miss.map(r => r.title.toLowerCase()));
+  const uniqueAvail   = availTitles.size;
+  const uniqueHold    = holdTitles.size;
+  const uniqueMissing = missTitles.size;
+  const uniqueFound   = uniqueAvail + uniqueHold;
+
+  // Summary — explains the edition split so the filter button counts make sense
+  const editionNote = totalEditions > uniqueFound
+    ? ` The ${uniqueFound} found books appear as <strong>${totalEditions} format editions</strong> in the results below — eBooks and audiobooks are listed separately.`
+    : '';
+  document.getElementById('search-summary').innerHTML =
+    `Of your <strong>${totalSearched}</strong> TBR books: ` +
+    `<strong>${uniqueAvail}</strong> available to borrow now, ` +
+    `<strong>${uniqueHold}</strong> on hold, ` +
+    `<strong>${uniqueMissing}</strong> not in this catalog.` +
+    editionNote;
 
   // Filter buttons
   activeFilter = 'all';
   document.getElementById('filter-row').innerHTML = `
-    <button class="filter-btn on" data-f="all"    onclick="setFilter('all',this)">All <span class="ct">${searchResults.length}</span></button>
-    <button class="filter-btn"    data-f="available" onclick="setFilter('available',this)">Borrow now <span class="ct">${avail.length}</span></button>
-    <button class="filter-btn"    data-f="hold"   onclick="setFilter('hold',this)">Hold <span class="ct">${holds.length}</span></button>
-    <button class="filter-btn"    data-f="missing" onclick="setFilter('missing',this)">Not found <span class="ct">${miss.length}</span></button>
-    <button class="filter-btn"    data-f="owned"  onclick="setFilter('owned',this)">Owned <span class="ct">${owned.length}</span></button>
+    <button class="filter-btn on" data-f="all"    onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn"    data-f="available" onclick="setFilter('available',this)">Borrow now</button>
+    <button class="filter-btn"    data-f="hold"   onclick="setFilter('hold',this)">Hold</button>
+    <button class="filter-btn"    data-f="missing" onclick="setFilter('missing',this)">Not found</button>
+    <button class="filter-btn"    data-f="owned"  onclick="setFilter('owned',this)">Owned</button>
     <input  id="book-search" placeholder="Search titles…" oninput="filterByText(this.value)">
   `;
 
@@ -1082,7 +1087,6 @@ function resetAll() {
 
   document.getElementById('results-section').classList.remove('show');
   document.getElementById('how-section').style.display = '';
-  document.getElementById('stats-grid').innerHTML = '';
   document.getElementById('filter-row').innerHTML = '';
   document.getElementById('book-grid').innerHTML = '';
 
