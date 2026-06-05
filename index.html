@@ -476,6 +476,21 @@ a { color: inherit; }
 </footer>
 
 <script>
+// ── CORS Proxy ──────────────────────────────────────────────────────────────
+// thunder.api.overdrive.com blocks browser requests from non-Libby origins.
+// Deploy worker.js as a Cloudflare Worker, then paste its URL here.
+// Leave empty only if you want to confirm the CORS error in DevTools.
+const PROXY_BASE = '';   // e.g. 'https://tbr-libby-proxy.YOUR-SUBDOMAIN.workers.dev'
+// ────────────────────────────────────────────────────────────────────────────
+
+if (!PROXY_BASE) {
+  console.warn(
+    '[TBR on Libby] ⚠ PROXY_BASE is not set.\n' +
+    '  Direct calls to thunder.api.overdrive.com will be blocked by CORS from this origin.\n' +
+    '  Every book will show as "Not in catalog" until you deploy worker.js and set PROXY_BASE.'
+  );
+}
+
 // ── State ──
 let parsedBooks   = { needsLibrary: [], alreadyOwned: [] };
 let selectedLib   = null;   // { key, name, address }
@@ -831,7 +846,11 @@ async function searchBook(book, libKey, formats) {
   const query = book.author ? `${book.title} ${book.author}` : book.title;
 
   try {
-    const url = `https://thunder.api.overdrive.com/v2/libraries/${encodeURIComponent(libKey)}/media?` +
+    // Use the CORS proxy when configured; fall back to direct (will fail from GitHub Pages).
+    const thunderBase = PROXY_BASE
+      ? `${PROXY_BASE}/v2/libraries/`
+      : `https://thunder.api.overdrive.com/v2/libraries/`;
+    const url = `${thunderBase}${encodeURIComponent(libKey)}/media?` +
       `query=${encodeURIComponent(query)}&perPage=5&page=1&format=${encodeURIComponent(allFormats)}&sort=relevance`;
 
     const res = await fetch(url);  // no custom headers — browsers block User-Agent and trigger CORS preflight
@@ -903,7 +922,24 @@ async function searchBook(book, libKey, formats) {
     }
 
   } catch(e) {
-    console.error('[TBR] Fetch failed for:', book.title, '—', e.message);
+    // TypeError with "fetch" / "network" wording = almost certainly a CORS block.
+    const isCorsLike = (e instanceof TypeError) &&
+      (e.message.toLowerCase().includes('fetch') ||
+       e.message.toLowerCase().includes('network') ||
+       e.message.toLowerCase().includes('cors'));
+    if (isCorsLike) {
+      console.error('[TBR] CORS/Network block on:', book.title, '—', e.message);
+      if (!window.__tbrCorsWarned) {
+        window.__tbrCorsWarned = true;
+        console.warn(
+          '[TBR] *** CORS ERROR — this is the cause of 0 results ***\n' +
+          '  thunder.api.overdrive.com is blocking browser requests from this origin.\n' +
+          '  Fix: deploy worker.js as a Cloudflare Worker and set PROXY_BASE in index.html.'
+        );
+      }
+    } else {
+      console.error('[TBR] Fetch error for:', book.title, '—', e.name, ':', e.message);
+    }
     window.__tbrLastError = e.message;
   }
 
