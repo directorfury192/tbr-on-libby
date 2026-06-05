@@ -827,8 +827,8 @@ async function runSearch() {
     pbar.style.width = pct + '%';
     plbl.textContent = `Searching ${i+1} of ${books.length}: "${book.title}"`;
 
-    const result = await searchBook(book, libKey, formats);
-    searchResults.push(result);
+    const results = await searchBook(book, libKey, formats);
+    searchResults.push(...results);
 
     // Throttle — be polite to OverDrive servers (matches Python's 0.4s delay)
     await sleep(400);
@@ -844,129 +844,87 @@ async function runSearch() {
   renderResults();
 }
 
+// Returns an ARRAY of results — one per format edition found (ebook, audiobook, etc.)
+// A book with both ebook and audiobook available produces two separate result cards.
 async function searchBook(book, libKey, formats) {
-  const base = { ...book, status: 'missing', coverUrl: null, formatLabel: '', holds: 0, copiesOwned: 0, copiesAvail: 0 };
+  const missing = [{ ...book, status: 'missing', coverUrl: null, formatLabel: '', holds: 0, copiesOwned: 0, copiesAvail: 0, odId: null }];
 
-  // Format list confirmed from libbysearch.com network inspection — use full set
   const allFormats = 'ebook-kindle,ebook-overdrive,ebook-epub-adobe,ebook-pdf-adobe,ebook-kobo,audiobook-overdrive,audiobook-mp3,magazine-overdrive';
-  // Use title+author as query (Python approach), fall back to title only
   const query = book.author ? `${book.title} ${book.author}` : book.title;
 
   try {
-    // Thunder API is CORS-open (Access-Control-Allow-Origin: *) — call directly
     const url = `https://thunder.api.overdrive.com/v2/libraries/${encodeURIComponent(libKey)}/media?` +
       `query=${encodeURIComponent(query)}&perPage=20&page=1&format=${encodeURIComponent(allFormats)}`;
 
     const res = await fetch(url);
     if (!res.ok) {
-      console.error('[TBR] HTTP', res.status, 'for', book.title, '— URL:', url);
-      window.__tbrLastError = `HTTP ${res.status}`;
-      return base;
+      console.error('[TBR] HTTP', res.status, 'for', book.title);
+      return missing;
     }
     const data = await res.json();
     const items = data.items || [];
-    if (!items.length) {
-      console.warn('[TBR] No items for:', book.title, '(searched:', query, ')');
-      return base;
-    }
-    // Log the first successful hit's full structure ONCE so we can verify field names
+    if (!items.length) return missing;
+
     if (!window.__tbrLoggedItem) {
       window.__tbrLoggedItem = true;
-      console.log('[TBR] First matched item full structure:', JSON.stringify(items[0], null, 2));
+      console.log('[TBR] First item structure:', JSON.stringify(items[0], null, 2));
     }
 
-    // Availability fields are at the TOP LEVEL of each item — confirmed from API response.
-    // (not nested in item.availability — that object doesn't exist in this API)
-    function itemAvail(item) {
-      return {
-        isAvailable: item.isAvailable || item.isAlwaysAvailable || false,
-        copiesOwned: item.ownedCopies  || 0,
-        copiesAvail: item.availableCopies || 0,
-        holds:       item.holdsCount   || 0,
-        waitDays:    item.estimatedWaitDays || 0,
-      };
-    }
-    function itemScore(item) {
-      const a = itemAvail(item);
-      if (a.isAvailable || a.copiesAvail > 0) return 2; // borrowable now
-      if (a.copiesOwned > 0)                  return 1; // on hold queue
-      return 0;
-    }
-
-    // Format preference (move before candidate filter so we can filter by it)
     const wantsEbook = formats.includes('ebook');
     const wantsAudio = formats.includes('audiobook');
-
-    // Find ALL title-matching items, filtered to the user's chosen formats,
-    // then pick the one with the best status.
     const titleLower = book.title.toLowerCase();
+
+    // Find all title-matching editions, filtered by the user's format preference
     const candidates = items.filter(item => {
       const t = (item.title || '').toLowerCase();
       if (!t.includes(titleLower.substring(0, 20)) && !titleLower.includes(t.substring(0, 20))) return false;
-      // item.type.id is "ebook" or "audiobook" — use it for format filtering
-      const isEbook = (item.type?.id || '').includes('ebook');
-      const isAudio = (item.type?.id || '').includes('audiobook');
-      if (!wantsEbook && isEbook) return false;
-      if (!wantsAudio && isAudio) return false;
+      const typeId = item.type?.id || '';
+      if (!wantsEbook && typeId.includes('ebook'))     return false;
+      if (!wantsAudio && typeId.includes('audiobook')) return false;
       return true;
     });
-    // Fall back to title-only match if format filter removed everything
-    if (!candidates.length) {
-      const byTitle = items.filter(item => {
-        const t = (item.title || '').toLowerCase();
-        return t.includes(titleLower.substring(0, 20)) || titleLower.includes(t.substring(0, 20));
-      });
-      candidates.push(...(byTitle.length ? byTitle : [items[0]]));
-    }
 
-    // Best-status wins; ties keep the earlier (more relevant) result
-    const match = candidates.reduce((best, c) => itemScore(c) > itemScore(best) ? c : best, candidates[0]);
+    if (!candidates.length) return missing;
 
-    const avail       = itemAvail(match);
-    const isAvailable = avail.isAvailable;
-    const copiesOwned = avail.copiesOwned;
-    const copiesAvail = avail.copiesAvail;
-    const holds       = avail.holds;
+    // Build one result card per candidate edition
+    return candidates.map(item => {
+      const isAvailable = item.isAvailable || item.isAlwaysAvailable || false;
+      const copiesOwned = item.ownedCopies    || 0;
+      const copiesAvail = item.availableCopies || 0;
+      const holds       = item.holdsCount     || 0;
+      const formatLabel = (item.type?.id || '').includes('audiobook') ? 'Audiobook' : 'eBook';
+      const covers   = item.covers || {};
+      const coverUrl = covers.cover300Wide?.href || covers.cover150Wide?.href || null;
 
-    // Format label from item.type.id (authoritative, no need to scan formats[])
-    const formatLabel = (match.type?.id || '').includes('audiobook') ? 'Audiobook' : 'eBook';
+      // Direct Libby link: /search/{key}/search/query-{title}/page-1/{contentId}
+      const displayTitle = item.title || book.title;
+      const libbyLink = `https://libbyapp.com/search/${encodeURIComponent(libKey)}/search/query-${encodeURIComponent(displayTitle)}/page-1/${item.id}`;
 
-    // ── Cover ──
-    const covers   = match.covers || {};
-    const coverUrl = (covers.cover300Wide && covers.cover300Wide.href)
-                  || (covers.cover150Wide && covers.cover150Wide.href)
-                  || (covers.cover96Wide  && covers.cover96Wide.href)
-                  || null;
+      let status;
+      if (isAvailable || copiesAvail > 0) status = 'available';
+      else if (copiesOwned > 0)           status = 'hold';
+      else                                status = 'hold';
 
-    base.coverUrl    = coverUrl;
-    base.formatLabel = formatLabel;
-    base.holds       = holds;
-    base.copiesOwned = copiesOwned;
-    base.copiesAvail = copiesAvail;
-    base.odTitle     = match.title  || book.title;
-    base.odAuthor    = (match.creators || []).map(c => c.name).join(', ') || book.author;
-    base.odId        = match.id || null;
-
-    // ── Status ──
-    if (isAvailable || copiesAvail > 0) {
-      base.status = 'available';
-    } else if (copiesOwned > 0) {
-      base.status = 'hold';
-    } else {
-      base.status = 'hold'; // in catalog, 0 copies — still holdable
-    }
+      return {
+        title:      book.title,
+        author:     book.author,
+        status,
+        formatLabel,
+        holds,
+        copiesOwned,
+        copiesAvail,
+        coverUrl,
+        odTitle:    item.title  || book.title,
+        odAuthor:   (item.creators || []).map(c => c.name).join(', ') || book.author,
+        odId:       item.id || null,
+        libbyLink,
+      };
+    });
 
   } catch(e) {
-    // TypeError with "fetch" / "network" wording = almost certainly a CORS block.
-    const isCorsLike = (e instanceof TypeError) &&
-      (e.message.toLowerCase().includes('fetch') ||
-       e.message.toLowerCase().includes('network') ||
-       e.message.toLowerCase().includes('cors'));
     console.error('[TBR] Fetch error for:', book.title, '—', e.name, ':', e.message);
-    window.__tbrLastError = e.message;
+    return missing;
   }
-
-  return base;
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1053,7 +1011,9 @@ function renderCards(filter) {
 
     // Libby deep-link — key is now the catalog slug (e.g. 'dclibrary', 'mcplmd')
     // extracted from the DigitalLibraryUrl in the locate API response.
-    const libbyLink = `https://libbyapp.com/library/${encodeURIComponent(selectedLib.key)}/search/query-${encodeURIComponent(displayTitle)}/page-1`;
+    // Direct link (with content ID) stored on result by searchBook(); fallback to title search
+    const libbyLink = book.libbyLink
+      || `https://libbyapp.com/library/${encodeURIComponent(selectedLib.key)}/search/query-${encodeURIComponent(displayTitle)}/page-1`;
 
     let tagHtml = '', actionHtml = '';
 
