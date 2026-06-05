@@ -448,9 +448,12 @@ a { color: inherit; }
     <div class="filter-row" id="filter-row"></div>
     <div class="book-grid" id="book-grid"></div>
     <div class="empty-msg" id="empty-msg" style="display:none">No books match that filter.</div>
-    <div style="margin-top:1.5rem;">
+    <div style="margin-top:1.5rem;display:flex;gap:10px;flex-wrap:wrap;">
       <button class="run-btn" style="background:var(--paper);color:var(--ink);border:1px solid var(--border);" onclick="resetAll()">
         ← Start over with a new CSV
+      </button>
+      <button class="run-btn" style="background:var(--green);color:#fff;border:none;" onclick="saveResults()">
+        ↓ Save results as CSV
       </button>
     </div>
   </div>
@@ -1061,6 +1064,38 @@ function renderCards(filter) {
       </div>`;
     grid.appendChild(card);
   });
+}
+
+// ── SAVE RESULTS ──
+function saveResults() {
+  const rows = [['Title', 'Author', 'Status', 'Format', 'Copies Available', 'Total Copies', 'Holds Queue', 'Libby Link']];
+
+  for (const b of searchResults) {
+    const statusLabel = b.status === 'available' ? 'Available' : b.status === 'hold' ? 'Hold' : 'Not in Catalog';
+    rows.push([
+      b.odTitle  || b.title,
+      b.odAuthor || b.author,
+      statusLabel,
+      b.formatLabel || '',
+      b.copiesAvail  != null ? b.copiesAvail  : '',
+      b.copiesOwned  != null ? b.copiesOwned  : '',
+      b.holds        != null ? b.holds        : '',
+      b.libbyLink    || '',
+    ]);
+  }
+
+  for (const b of parsedBooks.alreadyOwned) {
+    rows.push([b.title, b.author, 'Already Owned', '', '', '', '', '']);
+  }
+
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'tbr-on-libby-results.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── RESET ──
