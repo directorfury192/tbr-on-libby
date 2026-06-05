@@ -476,20 +476,8 @@ a { color: inherit; }
 </footer>
 
 <script>
-// ── CORS Proxy ──────────────────────────────────────────────────────────────
-// thunder.api.overdrive.com blocks browser requests from non-Libby origins.
-// Deploy worker.js as a Cloudflare Worker, then paste its URL here.
-// Leave empty only if you want to confirm the CORS error in DevTools.
-const PROXY_BASE = 'https://tbr-libby-proxy.millerarielle15.workers.dev';   // e.g. 'https://tbr-libby-proxy.YOUR-SUBDOMAIN.workers.dev'
-// ────────────────────────────────────────────────────────────────────────────
-
-if (!PROXY_BASE) {
-  console.warn(
-    '[TBR on Libby] ⚠ PROXY_BASE is not set.\n' +
-    '  Direct calls to thunder.api.overdrive.com will be blocked by CORS from this origin.\n' +
-    '  Every book will show as "Not in catalog" until you deploy worker.js and set PROXY_BASE.'
-  );
-}
+// NOTE: thunder.api.overdrive.com returns Access-Control-Allow-Origin: *
+// Direct browser calls work fine — no CORS proxy needed.
 
 // ── State ──
 let parsedBooks   = { needsLibrary: [], alreadyOwned: [] };
@@ -840,20 +828,17 @@ async function runSearch() {
 async function searchBook(book, libKey, formats) {
   const base = { ...book, status: 'missing', coverUrl: null, formatLabel: '', holds: 0, copiesOwned: 0, copiesAvail: 0 };
 
-  // Search both format types in one call, exactly like the Python script
-  const allFormats = 'ebook-epub-adobe,ebook-epub-open,audiobook-mp3,audiobook-overdrive';
+  // Format list confirmed from libbysearch.com network inspection — use full set
+  const allFormats = 'ebook-kindle,ebook-overdrive,ebook-epub-adobe,ebook-pdf-adobe,ebook-kobo,audiobook-overdrive,audiobook-mp3,magazine-overdrive';
   // Use title+author as query (Python approach), fall back to title only
   const query = book.author ? `${book.title} ${book.author}` : book.title;
 
   try {
-    // Use the CORS proxy when configured; fall back to direct (will fail from GitHub Pages).
-    const thunderBase = PROXY_BASE
-      ? `${PROXY_BASE}/v2/libraries/`
-      : `https://thunder.api.overdrive.com/v2/libraries/`;
-    const url = `${thunderBase}${encodeURIComponent(libKey)}/media?` +
-      `query=${encodeURIComponent(query)}&perPage=5&page=1&format=${encodeURIComponent(allFormats)}&sort=relevance`;
+    // Thunder API is CORS-open (Access-Control-Allow-Origin: *) — call directly
+    const url = `https://thunder.api.overdrive.com/v2/libraries/${encodeURIComponent(libKey)}/media?` +
+      `query=${encodeURIComponent(query)}&perPage=20&page=1&format=${encodeURIComponent(allFormats)}`;
 
-    const res = await fetch(url);  // no custom headers — browsers block User-Agent and trigger CORS preflight
+    const res = await fetch(url);
     if (!res.ok) {
       console.error('[TBR] HTTP', res.status, 'for', book.title, '— URL:', url);
       window.__tbrLastError = `HTTP ${res.status}`;
@@ -927,19 +912,7 @@ async function searchBook(book, libKey, formats) {
       (e.message.toLowerCase().includes('fetch') ||
        e.message.toLowerCase().includes('network') ||
        e.message.toLowerCase().includes('cors'));
-    if (isCorsLike) {
-      console.error('[TBR] CORS/Network block on:', book.title, '—', e.message);
-      if (!window.__tbrCorsWarned) {
-        window.__tbrCorsWarned = true;
-        console.warn(
-          '[TBR] *** CORS ERROR — this is the cause of 0 results ***\n' +
-          '  thunder.api.overdrive.com is blocking browser requests from this origin.\n' +
-          '  Fix: deploy worker.js as a Cloudflare Worker and set PROXY_BASE in index.html.'
-        );
-      }
-    } else {
-      console.error('[TBR] Fetch error for:', book.title, '—', e.name, ':', e.message);
-    }
+    console.error('[TBR] Fetch error for:', book.title, '—', e.name, ':', e.message);
     window.__tbrLastError = e.message;
   }
 
